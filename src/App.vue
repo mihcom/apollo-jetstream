@@ -1,23 +1,26 @@
 <template>
   <v-app>
     <v-main>
-      <HelloWorld/>
+      <JetStream />
     </v-main>
+    <v-footer app theme="dark">
+      <Timeline />
+    </v-footer>
   </v-app>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import JetStream from './components/JetStream.vue'
+import Timeline from './components/Timeline.vue'
 
 export default {
   name: 'App',
 
   components: {
-    HelloWorld,
-  },
-
-  data: () => ({
-    //
-  }),
+    JetStream,
+    Timeline
+  }
 }
 </script>
+
+<style scoped></style>

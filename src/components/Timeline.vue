@@ -1,19 +1,25 @@
 ﻿<script setup>
 import * as d3 from 'd3'
 import { onMounted, ref } from 'vue'
+import { useJetStreamStore } from '../stores/JetStream'
 
-const windowWidth = ref(window.innerWidth)
+const store = useJetStreamStore(),
+  windowWidth = ref(window.innerWidth),
+  windowHeight = ref(window.innerHeight)
 
-onMounted(() => {
-  const svg = d3.select('svg.timeline'),
+onMounted(async () => {
+  await store.fetchStreams()
+
+  const streams = store.streams,
+    svg = d3.select('svg.timeline'),
     width = svg.attr('width'),
     height = svg.attr('height') - 30,
-    xScale = d3.scaleTime().range([0, width]),
-    yScale = d3.scaleLinear().range([height, 0]),
-    g = svg.append('g').attr('transform', 'translate(' + 30 + ',' + 10 + ')')
-
-  xScale.domain(lastFiveMinutes())
-  yScale.domain([0, 20])
+    xScale = d3.scaleTime().domain(lastFiveMinutes()).range([0, width]),
+    yScale = d3
+      .scaleBand()
+      .domain(streams.map(x => x.config.name))
+      .range([0, height]),
+    g = svg.append('g').attr('transform', 'translate(' + 130 + ',' + 10 + ')')
 
   g.append('g')
     .attr('class', 'axis axis--x')
@@ -35,7 +41,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <svg :width="windowWidth" class="timeline" height="350"></svg>
+  <svg :height="windowHeight / 2" :width="windowWidth" class="timeline"></svg>
 </template>
 
-<style scoped></style>
+<style>
+.axis {
+  font: 10px sans-serif;
+}
+</style>

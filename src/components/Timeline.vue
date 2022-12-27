@@ -44,8 +44,16 @@ onMounted(async () => {
   <svg :height="windowHeight / 2" :width="windowWidth" class="timeline"></svg>
 </template>
 
-<style>
-.axis {
-  font: 10px sans-serif;
-}
+<style lang="stylus">
+.axis
+  font 10px sans-serif
+
+  &.axis--y
+    cursor pointer
+
+    .tick
+      transition all 0.2s ease-in-out
+
+      &:hover
+        color yellowgreen
 </style>

@@ -1,3 +1,8 @@
+<script setup>
+import JetStream from './components/JetStream.vue'
+import Timeline from './components/Timeline.vue'
+</script>
+
 <template>
   <v-app>
     <v-main>
@@ -8,19 +13,5 @@
     </v-footer>
   </v-app>
 </template>
-
-<script>
-import JetStream from './components/JetStream.vue'
-import Timeline from './components/Timeline.vue'
-
-export default {
-  name: 'App',
-
-  components: {
-    JetStream,
-    Timeline
-  }
-}
-</script>
 
 <style scoped></style>

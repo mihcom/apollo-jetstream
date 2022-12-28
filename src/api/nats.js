@@ -1,9 +1,8 @@
 import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
-import moment from 'moment'
 
 const serverUri = 'ws://localhost:443'
 
-async function getStreams() {
+async function getStreams(startTime) {
   const nc = await connect({ servers: serverUri }),
     jsm = await nc.jetstreamManager(),
     js = nc.jetstream(),
@@ -15,7 +14,7 @@ async function getStreams() {
         deliver_policy: DeliverPolicy.StartTime, // we want to start at a specific time
         deliver_subject: createInbox(), // specify subject to make this consumer a push consumer
         description: 'apollo-jetstream debug consumer',
-        opt_start_time: moment().add(-30, 'minutes').toISOString(), // start 5 minutes ago
+        opt_start_time: startTime, // start at the specified time
         replay_policy: ReplayPolicy.Instant // get messages as soon as possible
       },
       consumerOptions = {
@@ -25,12 +24,11 @@ async function getStreams() {
 
     stream.messages = []
 
-    const subscription = await js.subscribe('>', consumerOptions)
+    const subscription = await js.subscribe('>', consumerOptions) // noinspection ES6MissingAwait
 
     ;(async () => {
       for await (const message of subscription) {
         stream.messages.push(message)
-        console.log(message)
       }
     })()
   }

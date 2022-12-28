@@ -1,24 +1,53 @@
 ﻿<script setup>
 import * as d3 from 'd3'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useJetStreamStore } from '../stores/JetStream'
 import { millis } from 'nats.ws'
 
 const store = useJetStreamStore(),
+  svgContainer = ref(null),
   windowWidth = ref(window.innerWidth),
-  windowHeight = ref(window.innerHeight)
+  windowHeight = ref(window.innerHeight),
+  timeRanges = [
+    'Last 5 minutes',
+    'Last 15 minutes',
+    'Last 30 minutes',
+    'Last 1 hour',
+    'Last 2 hours',
+    'Last 4 hours',
+    'Last 8 hours',
+    'Last 24 hours'
+  ]
 
 onMounted(async () => {
-  await store.fetchStreams()
+  watch(() => store.streams, outputData)
+})
+
+function outputData() {
+  d3.select(svgContainer.value).selectAll('*').remove()
 
   const streams = store.streams,
-    svg = d3.select('svg.timeline'),
+    width = windowWidth.value,
+    height = windowHeight.value / 2 - 30,
     leftMargin = 120,
-    width = svg.attr('width'),
-    height = svg.attr('height') - 30,
+    svg = d3
+      .select(svgContainer.value)
+      .append('svg')
+      .attr('class', 'timeline')
+      .attr('width', windowWidth.value)
+      .attr('height', windowHeight.value / 2),
+    rangeSelector = d3
+      .select('svg.timeline')
+      .append('line')
+      .attr('class', 'range-selector')
+      .attr('x1', 0)
+      .attr('x2', 0)
+      .attr('y1', 0)
+      .attr('y2', height),
+    timeRange = () => [store.startTime, Date.now()],
     xScale = d3
       .scaleTime()
-      .domain(lastXMinites())
+      .domain(timeRange())
       .range([0, width - leftMargin]),
     yScale = d3
       .scaleBand()
@@ -29,6 +58,8 @@ onMounted(async () => {
       .domain(streams.map(x => x.config.name))
       .range(d3.schemeSpectral[10]),
     g = svg.append('g').attr('transform', 'translate(' + leftMargin + ',' + 10 + ')')
+
+  svg.on('mousemove', e => rangeSelector.attr('x1', e.offsetX).attr('x2', e.offsetX))
 
   // add the x Axis (time)
   g.append('g')
@@ -43,20 +74,19 @@ onMounted(async () => {
     .selectAll('text')
     .style('fill', d => accent(d))
 
-  const timeBarrier = lastXMinites()[0],
-    data = streams
-      .flatMap(stream =>
-        stream.messages.map(message => ({
-          stream: stream.config.name,
-          subject: message.subject,
-          data: message.data,
-          id: `${message.subject}/${message.sid}`,
-          timestamp: message.info.timestampNanos
-        }))
-      )
-      .filter(message => message.timestamp > timeBarrier),
+  const data = streams.flatMap(stream =>
+      stream.messages.map(message => ({
+        stream: stream.config.name,
+        subject: message.subject,
+        data: message.data,
+        id: `${message.subject}/${message.sid}`,
+        timestamp: message.info.timestampNanos
+      }))
+    ),
     messageBarWidth = 20,
     messageBarHeight = 10
+
+  console.log(data)
 
   g.selectAll('.message')
     .data(data, d => d.id)
@@ -75,24 +105,36 @@ onMounted(async () => {
 
   // move the timeline each second
   setInterval(() => {
-    xScale.domain(lastXMinites())
+    xScale.domain(timeRange())
     d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
     g.selectAll('.message')
       .transition()
       .attr('x', d => xScale(millis(d.timestamp)))
   }, 1000)
-
-  function lastXMinites() {
-    const now = Date.now()
-    return [now - 30 * 60 * 1000, now]
-  }
-})
+}
 </script>
 
 <template>
-  <svg :height="windowHeight / 2" :width="windowWidth" class="timeline"></svg>
+  <v-select :items="timeRanges" outlines density="compact" variant="underlined" v-model="store.timeRange" />
+  <div ref="svgContainer" />
+  <v-progress-linear color="yellow-darken-2" indeterminate :active="store.loading" />
 </template>
+
+<style lang="stylus" scoped>
+.v-select
+  position absolute
+  right 1em
+  top 1em
+  width 10em
+
+.v-progress-linear
+  position absolute
+  bottom 0
+  left 0
+  width 100%
+  z-index 100
+</style>
 
 <style lang="stylus">
 .axis
@@ -114,4 +156,19 @@ onMounted(async () => {
 
   &:hover
     fill #646cff
+
+.range-selector
+  stroke yellowgreen
+  stroke-width 0.5
+  stroke-dasharray 2, 1
+  transition all 0.2s ease-in-out
+
+svg text
+  -webkit-user-select none
+  -moz-user-select none
+  -ms-user-select none
+  user-select none
+
+svg text::selection
+  background none
 </style>

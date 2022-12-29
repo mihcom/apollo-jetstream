@@ -1,11 +1,10 @@
 import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
+import { eventBus, events } from '../infrastructure/eventBus.js'
 
 const serverUri = 'ws://localhost:443'
 let subscriptions = []
 
 async function getStreams(startTime, messages) {
-  console.log(startTime)
-
   messages.value = []
 
   for (const subscription of subscriptions) {
@@ -33,16 +32,17 @@ async function getStreams(startTime, messages) {
         stream: stream.config.name
       }
 
-    stream.messages = []
-
     const subscription = await js.subscribe('>', consumerOptions)
     subscriptions.push(subscription)
     ;(async () => {
       for await (const message of subscription) {
-        messages.value.push({
+        const entry = {
           stream,
           message
-        })
+        }
+
+        messages.value.push(entry)
+        eventBus.emit(events.NewMessage, entry)
       }
     })()
   }

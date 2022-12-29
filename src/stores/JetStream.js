@@ -4,9 +4,13 @@ import moment from 'moment'
 import { computed, ref, watch } from 'vue'
 
 export const useJetStreamStore = defineStore('JetStream', () => {
-  const timeRange = ref('Last 5 minutes'),
+  const timeRange = ref('Live'),
     loading = ref(false),
     duration = computed(() => {
+      if (timeRange.value === 'Live') {
+        return moment.duration(5, 'minutes')
+      }
+
       const parsedTime = /\w+\s+(\d+)\s+(\w+)/.exec(timeRange.value),
         number = parseInt(parsedTime[1]),
         unit = parsedTime[2].toLowerCase()

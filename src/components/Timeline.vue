@@ -1,14 +1,17 @@
 ﻿<script setup>
 import * as d3 from 'd3'
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, ref, watch, onBeforeUnmount } from 'vue'
 import { useJetStreamStore } from '../stores/JetStream'
 import { millis } from 'nats.ws'
+import { eventBus, events } from '../infrastructure/eventBus.js'
+import moment from 'moment'
 
 const store = useJetStreamStore(),
   svgContainer = ref(null),
   windowWidth = ref(window.innerWidth),
   windowHeight = ref(window.innerHeight),
   timeRanges = [
+    'Live',
     'Last 5 minutes',
     'Last 15 minutes',
     'Last 30 minutes',
@@ -19,8 +22,16 @@ const store = useJetStreamStore(),
     'Last 24 hours'
   ]
 
+let refreshInterval
+
 onMounted(async () => {
   watch(() => store.streams, outputData)
+  outputData()
+})
+
+onBeforeUnmount(() => {
+  eventBus.off(events.NewMessage)
+  clearInterval(refreshInterval)
 })
 
 function outputData() {
@@ -28,9 +39,10 @@ function outputData() {
 
   const streams = store.streams,
     messages = store.messages,
-    width = windowWidth.value,
-    height = windowHeight.value / 2 - 30,
     leftMargin = 120,
+    rightMargin = 50,
+    width = windowWidth.value - rightMargin,
+    height = windowHeight.value / 2 - 30,
     svg = d3
       .select(svgContainer.value)
       .append('svg')
@@ -39,13 +51,16 @@ function outputData() {
       .attr('height', windowHeight.value / 2),
     rangeSelector = d3
       .select('svg.timeline')
-      .append('line')
+      .append('rect')
       .attr('class', 'range-selector')
-      .attr('x1', 0)
-      .attr('x2', 0)
-      .attr('y1', 0)
-      .attr('y2', height),
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('width', 0)
+      .attr('height', height),
+    tooltip = d3.select(svgContainer.value).append('div').attr('class', 'tooltip').style('opacity', 0),
     timeRange = () => [Date.now() - store.duration, Date.now()],
+    mouseDown = ref(undefined),
+    customRange = ref([]),
     xScale = d3
       .scaleTime()
       .domain(timeRange())
@@ -60,7 +75,75 @@ function outputData() {
       .range(d3.schemeSpectral[10]),
     g = svg.append('g').attr('transform', 'translate(' + leftMargin + ',' + 10 + ')')
 
-  svg.on('mousemove', e => rangeSelector.attr('x1', e.offsetX).attr('x2', e.offsetX))
+  svg.on('mousedown', e => {
+    mouseDown.value = e.offsetX
+    rangeSelector.attr('x', e.offsetX).attr('width', 0)
+  })
+
+  svg.on('mouseup', e => {
+    const mousedownValue = mouseDown.value
+
+    rangeSelector.attr('width', 0)
+    mouseDown.value = undefined
+
+    if (Math.abs(mousedownValue - e.offsetX) < 10) {
+      return
+    }
+
+    customRange.value = [xScale.invert(mousedownValue - leftMargin), xScale.invert(e.offsetX - leftMargin)]
+
+    xScale.domain([customRange.value[0].getTime(), customRange.value[1].getTime()])
+    d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
+
+    g.selectAll('.message')
+      .data(data, d => d.id)
+      .call(d => d.transition().attr('x', d => xScale(millis(d.timestamp))))
+  })
+
+  svg.on('mousemove', e => {
+    const tooltipParts = [xScale.invert(e.offsetX - leftMargin)],
+      dateFormat = 'HH:mm:ss.SSS'
+
+    if (mouseDown.value !== undefined) {
+      tooltipParts.push(xScale.invert(mouseDown.value - leftMargin))
+    }
+
+    let tooltipText
+
+    if (tooltipParts.length === 1) {
+      tooltipText = moment(tooltipParts[0]).format(dateFormat)
+    } else {
+      const start = moment(Math.min(...tooltipParts)),
+        end = moment(Math.max(...tooltipParts)),
+        duration = moment.duration(end.diff(start))
+
+      tooltipText = `${start.format(dateFormat)} - ${end.format(dateFormat)} (${
+        duration.asSeconds() > 3 ? duration.humanize() : duration.asMilliseconds() + ' ms'
+      })`
+    }
+
+    tooltip
+      .style('top', `${e.offsetY + 18}px`)
+      .style('left', `${e.offsetX + 28}px`)
+      .text(tooltipText)
+
+    if (e.buttons !== 1 || mouseDown.value === undefined) {
+      // ignore if primary buttons is not pressed
+      return
+    }
+
+    const width = e.offsetX - mouseDown.value
+
+    // user can drag mouse left or right
+    if (width > 0) {
+      rangeSelector.attr('x', mouseDown.value).attr('width', width)
+    } else {
+      rangeSelector.attr('x', mouseDown.value + width).attr('width', Math.abs(width))
+    }
+  })
+
+  svg.on('mouseenter', () => tooltip.style('opacity', 1))
+  svg.on('mouseleave', () => tooltip.style('opacity', 0))
 
   // add the x Axis (time)
   g.append('g')
@@ -75,42 +158,68 @@ function outputData() {
     .selectAll('text')
     .style('fill', d => accent(d))
 
-  const data = messages.map(x => ({
+  const prepareDataEntry = x => ({
       stream: x.stream.config.name,
       subject: x.message.subject,
       data: x.message.data,
-      id: `${x.message.subject}/${x.message.sid}`,
+      id: x.message.reply,
       timestamp: x.message.info.timestampNanos
-    })),
+    }),
+    data = messages.map(prepareDataEntry),
     messageBarWidth = 20,
     messageBarHeight = 10
 
-  console.log(data)
+  renderData()
+  manageLiveEvents()
+  watch(store.timeRange, manageLiveEvents)
 
-  g.selectAll('.message')
-    .data(data, d => d.id)
-    .join(enter =>
-      enter
-        .append('rect')
-        .attr('class', 'message')
-        .attr('x', d => xScale(millis(d.timestamp)))
-        .attr('y', d => yScale(d.stream) + messageBarHeight)
-        .attr('fill', d => accent(d.stream))
-        .attr('width', messageBarWidth)
-        .attr('height', messageBarHeight)
-        .append('title')
-        .text(d => d.subject)
-    )
-
-  // move the timeline each second
-  setInterval(() => {
-    xScale.domain(timeRange())
-    d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
-
+  function renderData() {
     g.selectAll('.message')
-      .transition()
-      .attr('x', d => xScale(millis(d.timestamp)))
-  }, 1000)
+      .data(data, d => d.id)
+      .join(enter =>
+        enter
+          .append('rect')
+          .attr('class', 'message')
+          .attr('x', d => xScale(millis(d.timestamp)))
+          .attr('y', d => yScale(d.stream) + messageBarHeight)
+          .attr('fill', d => accent(d.stream))
+          .attr('width', messageBarWidth)
+          .attr('height', messageBarHeight)
+          .append('title')
+          .text(d => d.subject)
+      )
+  }
+
+  function manageLiveEvents() {
+    if (store.timeRange === 'Live') {
+      captureLiveEvents()
+    } else {
+      stopLiveEvents()
+    }
+  }
+
+  function captureLiveEvents() {
+    stopLiveEvents()
+
+    eventBus.on(events.NewMessage, x => {
+      data.push(prepareDataEntry(x))
+      renderData()
+    })
+
+    refreshInterval = setInterval(() => {
+      xScale.domain(timeRange())
+      d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
+
+      g.selectAll('.message')
+        .transition()
+        .attr('x', d => xScale(millis(d.timestamp)))
+    }, 1000)
+  }
+
+  function stopLiveEvents() {
+    clearInterval(refreshInterval)
+    eventBus.off(events.NewMessage)
+  }
 }
 </script>
 
@@ -150,6 +259,7 @@ function outputData() {
 
 .message
   stroke #747bff
+  stroke-width 1px
   margin-top 0.5em
   cursor pointer
 
@@ -157,9 +267,7 @@ function outputData() {
     fill #646cff
 
 .range-selector
-  stroke yellowgreen
-  stroke-width 0.5
-  stroke-dasharray 2, 1
+  fill #2B2E33
 
 svg text
   -webkit-user-select none
@@ -169,4 +277,14 @@ svg text
 
 svg text::selection
   background none
+
+.tooltip
+  position absolute
+  background-color #22252B
+  color #fff
+  padding 5px
+  border-radius 2px
+  transition opacity 0.5s
+  pointer-events none
+  z-index 100
 </style>

@@ -4,11 +4,11 @@ import Timeline from './components/Timeline.vue'
 </script>
 
 <template>
-  <v-app>
+  <v-app theme="dark">
     <v-main>
       <JetStream />
     </v-main>
-    <v-footer app theme="dark">
+    <v-footer app>
       <Timeline />
     </v-footer>
   </v-app>

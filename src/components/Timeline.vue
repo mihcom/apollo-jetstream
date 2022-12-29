@@ -1,6 +1,6 @@
 ﻿<script setup>
 import * as d3 from 'd3'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 import { useJetStreamStore } from '../stores/JetStream'
 import { millis } from 'nats.ws'
 
@@ -27,6 +27,7 @@ function outputData() {
   d3.select(svgContainer.value).selectAll('*').remove()
 
   const streams = store.streams,
+    messages = store.messages,
     width = windowWidth.value,
     height = windowHeight.value / 2 - 30,
     leftMargin = 120,
@@ -44,7 +45,7 @@ function outputData() {
       .attr('x2', 0)
       .attr('y1', 0)
       .attr('y2', height),
-    timeRange = () => [store.startTime, Date.now()],
+    timeRange = () => [Date.now() - store.duration, Date.now()],
     xScale = d3
       .scaleTime()
       .domain(timeRange())
@@ -74,15 +75,13 @@ function outputData() {
     .selectAll('text')
     .style('fill', d => accent(d))
 
-  const data = streams.flatMap(stream =>
-      stream.messages.map(message => ({
-        stream: stream.config.name,
-        subject: message.subject,
-        data: message.data,
-        id: `${message.subject}/${message.sid}`,
-        timestamp: message.info.timestampNanos
-      }))
-    ),
+  const data = messages.map(x => ({
+      stream: x.stream.config.name,
+      subject: x.message.subject,
+      data: x.message.data,
+      id: `${x.message.subject}/${x.message.sid}`,
+      timestamp: x.message.info.timestampNanos
+    })),
     messageBarWidth = 20,
     messageBarHeight = 10
 
@@ -161,7 +160,6 @@ function outputData() {
   stroke yellowgreen
   stroke-width 0.5
   stroke-dasharray 2, 1
-  transition all 0.2s ease-in-out
 
 svg text
   -webkit-user-select none

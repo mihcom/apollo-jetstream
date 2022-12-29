@@ -1,8 +1,19 @@
 import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
 
 const serverUri = 'ws://localhost:443'
+let subscriptions = []
 
-async function getStreams(startTime) {
+async function getStreams(startTime, messages) {
+  console.log(startTime)
+
+  messages.value = []
+
+  for (const subscription of subscriptions) {
+    subscription.destroy()
+  }
+
+  subscriptions = []
+
   const nc = await connect({ servers: serverUri }),
     jsm = await nc.jetstreamManager(),
     js = nc.jetstream(),
@@ -24,11 +35,14 @@ async function getStreams(startTime) {
 
     stream.messages = []
 
-    const subscription = await js.subscribe('>', consumerOptions) // noinspection ES6MissingAwait
-
+    const subscription = await js.subscribe('>', consumerOptions)
+    subscriptions.push(subscription)
     ;(async () => {
       for await (const message of subscription) {
-        stream.messages.push(message)
+        messages.value.push({
+          stream,
+          message
+        })
       }
     })()
   }

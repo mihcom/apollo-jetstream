@@ -6,20 +6,22 @@ import { computed, ref, watch } from 'vue'
 export const useJetStreamStore = defineStore('JetStream', () => {
   const timeRange = ref('Last 5 minutes'),
     loading = ref(false),
-    startTime = computed(() => {
+    duration = computed(() => {
       const parsedTime = /\w+\s+(\d+)\s+(\w+)/.exec(timeRange.value),
         number = parseInt(parsedTime[1]),
         unit = parsedTime[2].toLowerCase()
 
-      return moment().subtract(number, unit).valueOf()
+      return moment.duration(number, unit).asMilliseconds()
     }),
-    streams = ref([])
+    startTime = computed(() => moment().subtract(duration.value).valueOf()),
+    streams = ref([]),
+    messages = ref([])
 
   watch(timeRange, () => fetchStreams())
 
   async function fetchStreams() {
     loading.value = true
-    streams.value = await getStreams(moment(startTime.value).toISOString())
+    streams.value = await getStreams(moment(startTime.value).toISOString(), messages)
     loading.value = false
   }
 
@@ -29,7 +31,9 @@ export const useJetStreamStore = defineStore('JetStream', () => {
   return {
     timeRange,
     startTime,
+    duration,
     streams,
-    loading
+    loading,
+    messages
   }
 })

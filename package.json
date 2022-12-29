@@ -16,6 +16,7 @@
     "moment": "^2.29.4",
     "nats.ws": "^1.11.2",
     "pinia": "^2.0.28",
+    "pluralize": "^8.0.0",
     "roboto-fontface": "*",
     "uuid": "^9.0.0",
     "vue": "^3.2.45",

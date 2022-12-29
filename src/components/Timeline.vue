@@ -5,6 +5,7 @@ import { useJetStreamStore } from '../stores/JetStream'
 import { millis } from 'nats.ws'
 import { eventBus, events } from '../infrastructure/eventBus.js'
 import moment from 'moment'
+import pluralize from 'pluralize'
 
 const store = useJetStreamStore(),
   svgContainer = ref(null),
@@ -72,7 +73,7 @@ function outputData() {
     accent = d3
       .scaleOrdinal()
       .domain(streams.map(x => x.config.name))
-      .range(d3.schemeSpectral[10]),
+      .range(d3.schemeTableau10),
     g = svg.append('g').attr('transform', 'translate(' + leftMargin + ',' + 10 + ')')
 
   svg.on('mousedown', e => {
@@ -97,7 +98,7 @@ function outputData() {
 
     g.selectAll('.message')
       .data(data, d => d.id)
-      .call(d => d.transition().attr('x', d => xScale(millis(d.timestamp))))
+      .call(d => d.transition().attr('x', d => xScale(millis(d.timestampNanos))))
   })
 
   svg.on('mousemove', e => {
@@ -117,15 +118,29 @@ function outputData() {
         end = moment(Math.max(...tooltipParts)),
         duration = moment.duration(end.diff(start))
 
+      const elementsInRange = data.reduce((acc, x) => {
+        const messageMoment = moment(millis(x.timestampNanos))
+
+        if (messageMoment.isBetween(start, end)) {
+          return acc + 1
+        }
+
+        return acc
+      }, 0)
+
       tooltipText = `${start.format(dateFormat)} - ${end.format(dateFormat)} (${
         duration.asSeconds() > 3 ? duration.humanize() : duration.asMilliseconds() + ' ms'
       })`
+
+      if (elementsInRange > 0) {
+        tooltipText += `<br/>${elementsInRange} ${pluralize('message', elementsInRange)} in range`
+      }
     }
 
     tooltip
       .style('top', `${e.offsetY + 18}px`)
       .style('left', `${e.offsetX + 28}px`)
-      .text(tooltipText)
+      .html(tooltipText)
 
     if (e.buttons !== 1 || mouseDown.value === undefined) {
       // ignore if primary buttons is not pressed
@@ -163,7 +178,7 @@ function outputData() {
       subject: x.message.subject,
       data: x.message.data,
       id: x.message.reply,
-      timestamp: x.message.info.timestampNanos
+      timestampNanos: x.message.info.timestampNanos
     }),
     data = messages.map(prepareDataEntry),
     messageBarWidth = 20,
@@ -180,13 +195,13 @@ function outputData() {
         enter
           .append('rect')
           .attr('class', 'message')
-          .attr('x', d => xScale(millis(d.timestamp)))
+          .attr('x', d => xScale(millis(d.timestampNanos)))
           .attr('y', d => yScale(d.stream) + messageBarHeight)
           .attr('fill', d => accent(d.stream))
           .attr('width', messageBarWidth)
           .attr('height', messageBarHeight)
           .append('title')
-          .text(d => d.subject)
+          .text(d => `${d.subject} at ${moment(millis(d.timestampNanos)).format('HH:mm:ss.SSS')}`)
       )
   }
 
@@ -212,7 +227,7 @@ function outputData() {
 
       g.selectAll('.message')
         .transition()
-        .attr('x', d => xScale(millis(d.timestamp)))
+        .attr('x', d => xScale(millis(d.timestampNanos)))
     }, 1000)
   }
 

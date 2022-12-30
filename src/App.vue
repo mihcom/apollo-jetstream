@@ -1,12 +1,12 @@
 <script setup>
-import JetStream from './components/JetStream.vue'
+import Message from './components/Message.vue'
 import Timeline from './components/Timeline.vue'
 </script>
 
 <template>
   <v-app theme="dark">
     <v-main>
-      <JetStream />
+      <Message />
     </v-main>
     <v-footer app>
       <Timeline />

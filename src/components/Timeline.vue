@@ -178,7 +178,8 @@ function outputData() {
       subject: x.message.subject,
       data: x.message.data,
       id: x.message.reply,
-      timestampNanos: x.message.info.timestampNanos
+      timestampNanos: x.message.info.timestampNanos,
+      message: x.message
     }),
     data = messages.map(prepareDataEntry),
     messageBarWidth = 20,
@@ -186,7 +187,7 @@ function outputData() {
 
   renderData()
   manageLiveEvents()
-  watch(store.timeRange, manageLiveEvents)
+  watch(() => store.timeRange, manageLiveEvents)
 
   function renderData() {
     g.selectAll('.message')
@@ -200,6 +201,7 @@ function outputData() {
           .attr('fill', d => accent(d.stream))
           .attr('width', messageBarWidth)
           .attr('height', messageBarHeight)
+          .on('click', (_, d) => (store.selectedMessage = d.message))
           .append('title')
           .text(d => `${d.subject} at ${moment(millis(d.timestampNanos)).format('HH:mm:ss.SSS')}`)
       )

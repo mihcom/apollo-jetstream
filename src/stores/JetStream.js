@@ -38,6 +38,7 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     duration,
     streams,
     loading,
-    messages
+    messages,
+    selectedMessage: ref(undefined)
   }
 })

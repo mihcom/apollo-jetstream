@@ -21,7 +21,15 @@ const store = useJetStreamStore(),
     'Last 4 hours',
     'Last 8 hours',
     'Last 24 hours'
-  ]
+  ],
+  customRanges = ref([]),
+  dateFormat = 'HH:mm:ss.SSS',
+  rangeUi = () =>
+    customRanges.value.length
+      ? `${moment(customRanges.value[0][0]).format(dateFormat)} - ${moment(customRanges.value[0][1]).format(
+          dateFormat
+        )}`
+      : store.timeRange
 
 let refreshInterval
 
@@ -61,7 +69,6 @@ function outputData() {
     tooltip = d3.select(svgContainer.value).append('div').attr('class', 'tooltip').style('opacity', 0),
     timeRange = () => [Date.now() - store.duration, Date.now()],
     mouseDown = ref(undefined),
-    customRange = ref([]),
     xScale = d3
       .scaleTime()
       .domain(timeRange())
@@ -91,19 +98,23 @@ function outputData() {
       return
     }
 
-    customRange.value = [xScale.invert(mousedownValue - leftMargin), xScale.invert(e.offsetX - leftMargin)]
+    const domain = [
+      xScale.invert(mousedownValue - leftMargin).getTime(),
+      xScale.invert(e.offsetX - leftMargin).getTime()
+    ]
 
-    xScale.domain([customRange.value[0].getTime(), customRange.value[1].getTime()])
+    xScale.domain(domain)
     d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
     g.selectAll('.message')
       .data(data, d => d.id)
       .call(d => d.transition().attr('x', d => xScale(millis(d.timestampNanos))))
+
+    customRanges.value = [domain, ...customRanges.value]
   })
 
   svg.on('mousemove', e => {
-    const tooltipParts = [xScale.invert(e.offsetX - leftMargin)],
-      dateFormat = 'HH:mm:ss.SSS'
+    const tooltipParts = [xScale.invert(e.offsetX - leftMargin)]
 
     if (mouseDown.value !== undefined) {
       tooltipParts.push(xScale.invert(mouseDown.value - leftMargin))
@@ -187,7 +198,14 @@ function outputData() {
 
   renderData()
   manageLiveEvents()
-  watch(() => store.timeRange, manageLiveEvents)
+  watch(
+    () => store.timeRange,
+    () => {
+      customRanges.value = []
+      manageLiveEvents()
+    }
+  )
+  watch(customRanges, manageLiveEvents)
 
   function renderData() {
     g.selectAll('.message')
@@ -208,7 +226,7 @@ function outputData() {
   }
 
   function manageLiveEvents() {
-    if (store.timeRange === 'Live') {
+    if (store.timeRange === 'Live' && !customRanges.value.length) {
       captureLiveEvents()
     } else {
       stopLiveEvents()
@@ -241,7 +259,9 @@ function outputData() {
 </script>
 
 <template>
-  <v-select :items="timeRanges" outlines density="compact" variant="underlined" v-model="store.timeRange" />
+  <v-select :items="timeRanges" outlines density="compact" variant="underlined" v-model="store.timeRange">
+    <template v-slot:selection="data"> {{ rangeUi() }} </template>
+  </v-select>
   <div ref="svgContainer" />
   <v-progress-linear color="yellow-darken-2" indeterminate :active="store.loading" />
 </template>
@@ -251,7 +271,7 @@ function outputData() {
   position absolute
   right 1em
   top 1em
-  width 10em
+  width 15em
 
 .v-progress-linear
   position absolute

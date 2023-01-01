@@ -3,6 +3,8 @@ import { useJetStreamStore } from '../stores/JetStream.js'
 import { ref, watch } from 'vue'
 import JSONFormatter from 'json-formatter-js'
 import jwt_decode from 'jwt-decode'
+import moment from 'moment'
+import { millis } from 'nats.ws'
 
 const store = useJetStreamStore(),
   messageContainer = ref(null)
@@ -14,6 +16,7 @@ watch(
 
     if (message) {
       const data = {
+        published: moment(millis(message.info.timestampNanos)).format('DD MMM HH:mm:ss.SSS'),
         stream: message.info.stream,
         subject: message.subject
       }

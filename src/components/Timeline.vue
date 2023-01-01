@@ -6,6 +6,7 @@ import { millis } from 'nats.ws'
 import { eventBus, events } from '../infrastructure/eventBus.js'
 import moment from 'moment'
 import pluralize from 'pluralize'
+import hotkeys from 'hotkeys-js'
 
 const store = useJetStreamStore(),
   svgContainer = ref(null),
@@ -29,21 +30,32 @@ const store = useJetStreamStore(),
       ? `${moment(customRanges.value[0][0]).format(dateFormat)} - ${moment(customRanges.value[0][1]).format(
           dateFormat
         )}`
-      : store.timeRange
+      : store.timeRange,
+  watchers = []
 
 let refreshInterval
 
 onMounted(async () => {
   watch(() => store.streams, outputData)
   outputData()
+
+  hotkeys('esc', () => {
+    customRanges.value.shift()
+    customRanges.value = [...customRanges.value]
+  })
 })
 
-onBeforeUnmount(() => {
+onBeforeUnmount(cleanup)
+
+function cleanup() {
   eventBus.off(events.NewMessage)
   clearInterval(refreshInterval)
-})
+  watchers.forEach(unwatch => unwatch())
+}
 
 function outputData() {
+  cleanup()
+
   d3.select(svgContainer.value).selectAll('*').remove()
 
   const streams = store.streams,
@@ -102,13 +114,6 @@ function outputData() {
       xScale.invert(mousedownValue - leftMargin).getTime(),
       xScale.invert(e.offsetX - leftMargin).getTime()
     ]
-
-    xScale.domain(domain)
-    d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
-
-    g.selectAll('.message')
-      .data(data, d => d.id)
-      .call(d => d.transition().attr('x', d => xScale(millis(d.timestampNanos))))
 
     customRanges.value = [domain, ...customRanges.value]
   })
@@ -198,14 +203,26 @@ function outputData() {
 
   renderData()
   manageLiveEvents()
-  watch(
-    () => store.timeRange,
-    () => {
-      customRanges.value = []
-      manageLiveEvents()
-    }
+
+  watchers.push(
+    watch(
+      () => store.timeRange,
+      () => {
+        if (customRanges.value.length) {
+          customRanges.value = []
+        }
+
+        manageLiveEvents()
+      }
+    )
   )
-  watch(customRanges, manageLiveEvents)
+
+  watchers.push(
+    watch(customRanges, () => {
+      manageLiveEvents()
+      displayCustomRange()
+    })
+  )
 
   function renderData() {
     g.selectAll('.message')
@@ -254,6 +271,17 @@ function outputData() {
   function stopLiveEvents() {
     clearInterval(refreshInterval)
     eventBus.off(events.NewMessage)
+  }
+
+  function displayCustomRange() {
+    const domain = customRanges.value.length ? customRanges.value[0] : timeRange()
+
+    xScale.domain(domain)
+    d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
+
+    g.selectAll('.message')
+      .data(data, d => d.id)
+      .call(d => d.transition().attr('x', d => xScale(millis(d.timestampNanos))))
   }
 }
 </script>

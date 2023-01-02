@@ -1,7 +1,9 @@
 import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
 import { eventBus, events } from '../infrastructure/eventBus.js'
+import { useToast } from 'vue-toastification'
 
-const serverUri = 'ws://localhost:443'
+const serverUri = 'ws://localhost:443',
+  toast = useToast()
 let subscriptions = []
 
 async function getStreams(startTime, messages) {
@@ -13,8 +15,16 @@ async function getStreams(startTime, messages) {
 
   subscriptions = []
 
-  const nc = await connect({ servers: serverUri }),
-    jsm = await nc.jetstreamManager(),
+  let nc
+
+  try {
+    nc = await connect({ servers: serverUri })
+  } catch (e) {
+    toast.error(`Failed to connect to NATS server at ${serverUri}`, { timeout: 0 })
+    throw e
+  }
+
+  const jsm = await nc.jetstreamManager(),
     js = nc.jetstream(),
     streams = await jsm.streams.list().next()
 

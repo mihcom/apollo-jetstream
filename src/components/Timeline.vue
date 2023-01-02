@@ -110,10 +110,9 @@ function outputData() {
       return
     }
 
-    const domain = [
-      xScale.invert(mousedownValue - leftMargin).getTime(),
-      xScale.invert(e.offsetX - leftMargin).getTime()
-    ]
+    const left = xScale.invert(mousedownValue - leftMargin).getTime(),
+      right = xScale.invert(e.offsetX - leftMargin).getTime(),
+      domain = [Math.min(left, right), Math.max(left, right)]
 
     customRanges.value = [domain, ...customRanges.value]
   })

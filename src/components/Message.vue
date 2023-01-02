@@ -69,5 +69,3 @@ watch(
 <template>
   <div ref="messageContainer" class="message"></div>
 </template>
-
-<style scoped></style>

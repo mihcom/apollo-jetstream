@@ -1,5 +1,4 @@
 import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
-import { eventBus, events } from '../infrastructure/eventBus.js'
 import { useToast } from 'vue-toastification'
 
 const serverUri = 'ws://localhost:444',
@@ -52,7 +51,6 @@ async function getStreams(startTime, messages) {
         }
 
         messages.value.push(entry)
-        eventBus.emit(events.NewMessage, entry)
       }
     })()
   }

@@ -67,5 +67,5 @@ watch(
 </script>
 
 <template>
-  <div ref="messageContainer" class="message"></div>
+  <div ref="messageContainer"></div>
 </template>

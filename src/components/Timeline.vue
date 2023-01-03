@@ -1,12 +1,12 @@
 ﻿<script setup>
 import * as d3 from 'd3'
-import { onMounted, ref, watch, onBeforeUnmount } from 'vue'
+import { onMounted, ref, watch, onBeforeUnmount, computed } from 'vue'
 import { useJetStreamStore } from '../stores/JetStream'
 import { millis } from 'nats.ws'
-import { eventBus, events } from '../infrastructure/eventBus.js'
 import moment from 'moment'
 import pluralize from 'pluralize'
 import hotkeys from 'hotkeys-js'
+import { debounce } from 'debounce'
 
 const store = useJetStreamStore(),
   svgContainer = ref(null),
@@ -48,7 +48,6 @@ onMounted(async () => {
 onBeforeUnmount(cleanup)
 
 function cleanup() {
-  eventBus.off(events.NewMessage)
   clearInterval(refreshInterval)
   watchers.forEach(unwatch => unwatch())
 }
@@ -196,7 +195,7 @@ function outputData() {
       timestampNanos: x.message.info.timestampNanos,
       message: x.message
     }),
-    data = messages.map(prepareDataEntry),
+    data = computed(() => messages.map(prepareDataEntry)),
     messageBarWidth = 20,
     messageBarHeight = 10
 
@@ -223,9 +222,11 @@ function outputData() {
     })
   )
 
+  watchers.push(watch(data, debounce(renderData, 100)))
+
   function renderData() {
     g.selectAll('.message')
-      .data(data, d => d.id)
+      .data(data.value, d => d.id)
       .join(enter =>
         enter
           .append('rect')
@@ -235,6 +236,7 @@ function outputData() {
           .attr('fill', d => accent(d.stream))
           .attr('width', messageBarWidth)
           .attr('height', messageBarHeight)
+          .attr('opacity', 1)
           .on('click', (_, d) => (store.selectedMessage = d.message))
           .append('title')
           .text(d => `${d.subject} at ${moment(millis(d.timestampNanos)).format('HH:mm:ss.SSS')}`)
@@ -252,25 +254,30 @@ function outputData() {
   function captureLiveEvents() {
     stopLiveEvents()
 
-    eventBus.on(events.NewMessage, x => {
-      data.push(prepareDataEntry(x))
-      renderData()
-    })
+    const renderDataDebounced = debounce(renderData, 100)
 
     refreshInterval = setInterval(() => {
       xScale.domain(timeRange())
       d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
-      g.selectAll('.message')
-        .transition()
-        .attr('x', d => xScale(millis(d.timestampNanos)))
-        .attr('opacity', d => (xScale(millis(d.timestampNanos)) > 5 ? 1 : 0))
+      g.selectAll('.message.out').remove()
+
+      g.selectAll('.message').each(function (d) {
+        const x = xScale(millis(d.timestampNanos)),
+          goingOut = x <= 5
+
+        d3.select(this)
+          .transition()
+          .attr('x', x)
+          .attr('opacity', goingOut ? 0 : 1)
+
+        d3.select(this).classed('out', goingOut)
+      })
     }, 1000)
   }
 
   function stopLiveEvents() {
     clearInterval(refreshInterval)
-    eventBus.off(events.NewMessage)
   }
 
   function displayCustomRange() {

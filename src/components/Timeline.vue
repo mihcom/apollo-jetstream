@@ -231,7 +231,7 @@ function outputData() {
           .append('rect')
           .attr('class', 'message')
           .attr('x', d => xScale(millis(d.timestampNanos)))
-          .attr('y', d => yScale(d.stream) + messageBarHeight)
+          .attr('y', d => (yScale(d.stream) || 0) + messageBarHeight)
           .attr('fill', d => accent(d.stream))
           .attr('width', messageBarWidth)
           .attr('height', messageBarHeight)
@@ -264,6 +264,7 @@ function outputData() {
       g.selectAll('.message')
         .transition()
         .attr('x', d => xScale(millis(d.timestampNanos)))
+        .attr('opacity', d => (xScale(millis(d.timestampNanos)) > 5 ? 1 : 0))
     }, 1000)
   }
 
@@ -322,7 +323,7 @@ function outputData() {
         color yellowgreen
 
 .message
-  stroke #747bff
+  stroke white
   stroke-width 1px
   margin-top 0.5em
   cursor pointer

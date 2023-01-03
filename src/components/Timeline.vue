@@ -254,8 +254,6 @@ function outputData() {
   function captureLiveEvents() {
     stopLiveEvents()
 
-    const renderDataDebounced = debounce(renderData, 100)
-
     refreshInterval = setInterval(() => {
       xScale.domain(timeRange())
       d3.select('.axis--x').transition().call(d3.axisBottom(xScale))

@@ -2,7 +2,7 @@ import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'na
 import { eventBus, events } from '../infrastructure/eventBus.js'
 import { useToast } from 'vue-toastification'
 
-const serverUri = 'ws://localhost:443',
+const serverUri = 'ws://localhost:444',
   toast = useToast()
 let subscriptions = []
 

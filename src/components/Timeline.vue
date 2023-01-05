@@ -132,7 +132,7 @@ function outputData() {
         end = moment(Math.max(...tooltipParts)),
         duration = moment.duration(end.diff(start))
 
-      const elementsInRange = data.reduce((acc, x) => {
+      const elementsInRange = data.value.reduce((acc, x) => {
         const messageMoment = moment(millis(x.timestampNanos))
 
         if (messageMoment.isBetween(start, end)) {
@@ -284,9 +284,7 @@ function outputData() {
     xScale.domain(domain)
     d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
-    g.selectAll('.message')
-      .data(data, d => d.id)
-      .call(d => d.transition().attr('x', d => xScale(millis(d.timestampNanos))))
+    g.selectAll('.message').call(d => d.transition().attr('x', d => xScale(millis(d.timestampNanos))))
   }
 }
 </script>

@@ -154,6 +154,7 @@ function outputData() {
     tooltip
       .style('top', `${e.offsetY + 18}px`)
       .style('left', `${e.offsetX + 28}px`)
+      .style('opacity', e.offsetX > leftMargin ? '1' : '0')
       .html(tooltipText)
 
     if (e.buttons !== 1 || mouseDown.value === undefined) {

@@ -2,7 +2,7 @@
 import * as d3 from 'd3'
 import { onMounted, ref, watch, onBeforeUnmount, computed } from 'vue'
 import { useJetStreamStore } from '../stores/JetStream'
-import { millis } from 'nats.ws'
+import { millis, nanos } from 'nats.ws'
 import moment from 'moment'
 import pluralize from 'pluralize'
 import hotkeys from 'hotkeys-js'
@@ -31,7 +31,9 @@ const store = useJetStreamStore(),
           dateFormat
         )}`
       : store.timeRange,
-  watchers = []
+  watchers = [],
+  selectedStream = ref(undefined),
+  openDialog = ref(false)
 
 let refreshInterval
 
@@ -154,6 +156,7 @@ function outputData() {
     tooltip
       .style('top', `${e.offsetY + 18}px`)
       .style('left', `${e.offsetX + 28}px`)
+      .style('opacity', e.offsetX > leftMargin ? '1' : '0')
       .html(tooltipText)
 
     if (e.buttons !== 1 || mouseDown.value === undefined) {
@@ -186,6 +189,12 @@ function outputData() {
     .call(d3.axisLeft(yScale))
     .selectAll('text')
     .style('fill', d => accent(d))
+
+  g.selectAll('.axis--y .tick').on('click', (_, streamName) => {
+    const stream = streams.find(x => x.config.name === streamName)
+    selectedStream.value = stream
+    openDialog.value = true
+  })
 
   const prepareDataEntry = x => ({
       stream: x.stream.config.name,
@@ -295,6 +304,93 @@ function outputData() {
   </v-select>
   <div ref="svgContainer" />
   <v-progress-linear color="yellow-darken-2" indeterminate :active="store.loading" />
+  <v-dialog v-model="openDialog" max-width="40em">
+    <v-card>
+      <v-toolbar color="primary" dense>
+        <v-toolbar-title><v-icon>mdi-tray-full</v-icon> {{ selectedStream?.config.name }} </v-toolbar-title>
+      </v-toolbar>
+      <v-card-text>
+        <v-row v-if="selectedStream?.config.description">
+          <v-col>Description</v-col>
+          <v-col>{{ selectedStream?.config.description }}</v-col>
+        </v-row>
+        <v-row>
+          <v-col><v-icon>mdi-filter</v-icon> Subjects</v-col>
+          <v-col>{{ selectedStream?.config.subjects.join(', ') }}</v-col>
+        </v-row>
+        <v-row>
+          <v-col><v-icon>mdi-database</v-icon>Retention policy</v-col>
+          <v-col
+            >{{ selectedStream?.config.retention }}
+            <ul class="limits">
+              <li v-if="selectedStream?.config.max_age > 0">
+                {{ moment.duration(millis(selectedStream?.config.max_age)).humanize() }} lifetime
+              </li>
+              <li v-if="selectedStream?.config.max_bytes > 0">
+                {{ selectedStream?.config.max_bytes }} bytes ({{
+                  (selectedStream?.config.max_bytes / 1024 / 1024).toLocaleString('da-DK', {
+                    style: 'unit',
+                    unit: 'megabyte',
+                    unitDisplay: 'long'
+                  })
+                }})
+              </li>
+              <li v-if="selectedStream?.config.max_msgs > 0">
+                {{ selectedStream?.config.max_msgs.toLocaleString('da-DK') }} messages
+              </li>
+            </ul>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col><v-icon>mdi-email-multiple</v-icon> Messages</v-col>
+          <v-col>{{ selectedStream?.state.messages.toLocaleString('da-DK') }}</v-col>
+        </v-row>
+        <v-row>
+          <v-col><v-icon>mdi-content-save</v-icon> Size</v-col>
+          <v-col>
+            {{
+              (selectedStream?.state.bytes / 1024 / 1024).toLocaleString('da-DK', {
+                style: 'unit',
+                unit: 'megabyte',
+                unitDisplay: 'long'
+              })
+            }}</v-col
+          >
+        </v-row>
+        <v-row>
+          <v-col><v-icon>mdi-human-queue</v-icon> Consumers</v-col>
+          <v-col>{{ selectedStream?.state.consumer_count.toLocaleString('da-DK') }}</v-col>
+        </v-row>
+        <v-row>
+          <v-col><v-icon>mdi-calendar-clock</v-icon> First message</v-col>
+          <v-col>
+            <div v-if="selectedStream?.state.first_ts != '0001-01-01T00:00:00Z'">
+              {{ moment(selectedStream?.state.first_ts).format('DD MMM YYYY  HH:mm:ss.SSS') }} ({{
+                moment.duration(moment().diff(moment(selectedStream?.state.first_ts))).humanize()
+              }}
+              ago)
+            </div>
+            <div v-else>never</div>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col><v-icon>mdi-calendar-clock</v-icon> Last message</v-col>
+          <v-col>
+            <div v-if="selectedStream?.state.last_ts != '0001-01-01T00:00:00Z'">
+              {{ moment(selectedStream?.state.last_ts).format('DD MMM YYYY  HH:mm:ss.SSS') }} ({{
+                moment.duration(moment().diff(moment(selectedStream?.state.last_ts))).humanize()
+              }}
+              ago)
+            </div>
+            <div v-else>never</div>
+          </v-col>
+        </v-row>
+      </v-card-text>
+      <v-card-actions class="justify-end">
+        <v-btn text @click="openDialog = undefined">Close</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style lang="stylus" scoped>
@@ -310,6 +406,12 @@ function outputData() {
   left 0
   width 100%
   z-index 100
+
+.v-col:first-child
+  flex 0 0 12em
+
+ul.limits
+  margin-left 1em
 </style>
 
 <style lang="stylus">

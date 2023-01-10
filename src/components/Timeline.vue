@@ -2,7 +2,7 @@
 import * as d3 from 'd3'
 import { onMounted, ref, watch, onBeforeUnmount, computed } from 'vue'
 import { useJetStreamStore } from '../stores/JetStream'
-import { millis, nanos } from 'nats.ws'
+import { millis } from 'nats.ws'
 import moment from 'moment'
 import pluralize from 'pluralize'
 import hotkeys from 'hotkeys-js'
@@ -205,8 +205,7 @@ function outputData() {
       message: x.message
     }),
     data = computed(() => messages.map(prepareDataEntry)),
-    messageBarWidth = 20,
-    messageBarHeight = 10
+    messageRadius = 5
 
   renderData()
   manageLiveEvents()
@@ -238,13 +237,12 @@ function outputData() {
       .data(data.value, d => d.id)
       .join(enter =>
         enter
-          .append('rect')
+          .append('circle')
           .attr('class', 'message')
-          .attr('x', d => xScale(millis(d.timestampNanos)))
-          .attr('y', d => (yScale(d.stream) || 0) + messageBarHeight)
+          .attr('cx', d => xScale(millis(d.timestampNanos)))
+          .attr('cy', d => (yScale(d.stream) || 0) + 12)
+          .attr('r', messageRadius)
           .attr('fill', d => accent(d.stream))
-          .attr('width', messageBarWidth)
-          .attr('height', messageBarHeight)
           .attr('opacity', 1)
           .on('click', (_, d) => (store.selectedMessage = d.message))
           .append('title')

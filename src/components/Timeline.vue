@@ -273,7 +273,7 @@ function outputData() {
 
         d3.select(this)
           .transition()
-          .attr('x', x)
+          .attr('cx', x)
           .attr('opacity', goingOut ? 0 : 1)
 
         d3.select(this).classed('out', goingOut)

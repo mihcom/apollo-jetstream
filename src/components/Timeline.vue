@@ -291,7 +291,7 @@ function outputData() {
     xScale.domain(domain)
     d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
-    g.selectAll('.message').call(d => d.transition().attr('x', d => xScale(millis(d.timestampNanos))))
+    g.selectAll('.message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
   }
 }
 </script>

@@ -244,7 +244,11 @@ function outputData() {
           .attr('r', messageRadius)
           .attr('fill', d => accent(d.stream))
           .attr('opacity', 1)
-          .on('click', (_, d) => (store.selectedMessage = d.message))
+          .on('click', function (_, d) {
+            g.selectAll('.message.selected').classed('selected', false)
+            d3.select(this).classed('selected', true)
+            store.selectedMessage = d.message
+          })
           .append('title')
           .text(d => `${d.subject} at ${moment(millis(d.timestampNanos)).format('HH:mm:ss.SSS')}`)
       )
@@ -430,6 +434,10 @@ ul.limits
   stroke-width 1px
   margin-top 0.5em
   cursor pointer
+
+  &.selected
+    fill red
+    stroke-width 2px
 
   &:hover
     fill #646cff

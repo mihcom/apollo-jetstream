@@ -3,10 +3,12 @@ import { useToast } from 'vue-toastification'
 
 const serverUri = 'ws://localhost:444',
   toast = useToast()
-let subscriptions = []
+let subscriptions = [],
+  pullInterval
 
 async function getStreams(startTime, messages) {
   messages.value = []
+  clearInterval(pullInterval)
 
   for (const subscription of subscriptions) {
     subscription.destroy()
@@ -29,9 +31,8 @@ async function getStreams(startTime, messages) {
 
   for (const stream of streams) {
     const consumerConfiguration = {
-        ack_policy: AckPolicy.None, // we don't need to ack messages
+        ack_policy: AckPolicy.Explicit,
         deliver_policy: DeliverPolicy.StartTime, // we want to start at a specific time
-        deliver_subject: createInbox(), // specify subject to make this consumer a push consumer
         description: 'apollo-jetstream debug consumer',
         opt_start_time: startTime, // start at the specified time
         replay_policy: ReplayPolicy.Instant // get messages as soon as possible
@@ -41,7 +42,7 @@ async function getStreams(startTime, messages) {
         stream: stream.config.name
       }
 
-    const subscription = await js.subscribe('>', consumerOptions)
+    const subscription = await js.pullSubscribe('>', consumerOptions)
     subscriptions.push(subscription)
     ;(async () => {
       for await (const message of subscription) {
@@ -51,8 +52,17 @@ async function getStreams(startTime, messages) {
         }
 
         messages.value.push(entry)
+        message.ack()
       }
     })()
+
+    const pull = () => {
+      subscription.pull({ batch: 1000, expires: 1000 })
+    }
+
+    pull()
+
+    pullInterval = setInterval(pull, 1000)
   }
 
   return streams.sort((a, b) => a.config.name.localeCompare(b.config.name))

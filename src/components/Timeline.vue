@@ -7,6 +7,7 @@ import moment from 'moment'
 import pluralize from 'pluralize'
 import hotkeys from 'hotkeys-js'
 import { debounce } from 'debounce'
+import groupToMap from 'core-js/actual/array/group-to-map'
 
 const store = useJetStreamStore(),
   svgContainer = ref(null),
@@ -138,18 +139,22 @@ function outputData() {
         const messageMoment = moment(millis(x.timestampNanos))
 
         if (messageMoment.isBetween(start, end)) {
-          return acc + 1
+          acc.push(x)
         }
 
         return acc
-      }, 0)
+      }, [])
 
       tooltipText = `${start.format(dateFormat)} - ${end.format(dateFormat)} (${
         duration.asSeconds() > 3 ? duration.humanize() : duration.asMilliseconds() + ' ms'
       })`
 
-      if (elementsInRange > 0) {
-        tooltipText += `<br/>${elementsInRange} ${pluralize('message', elementsInRange)} in range`
+      if (elementsInRange.length > 0) {
+        tooltipText += `<br/>${elementsInRange.length} ${pluralize('message', elementsInRange.length)} in range<hr/>`
+
+        groupToMap(elementsInRange, x => x.stream).forEach((value, key) => {
+          tooltipText += `${key}: ${value.length} ${pluralize('message', value.length)}<br/>`
+        })
       }
     }
 
@@ -240,7 +245,7 @@ function outputData() {
           .append('circle')
           .attr('class', 'message')
           .attr('cx', d => xScale(millis(d.timestampNanos)))
-          .attr('cy', d => (yScale(d.stream) || 0) + 12)
+          .attr('cy', d => (yScale(d.stream) || 0) + 15)
           .attr('r', messageRadius)
           .attr('fill', d => accent(d.stream))
           .attr('opacity', 1)

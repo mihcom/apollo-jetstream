@@ -1,4 +1,4 @@
-import { AckPolicy, connect, DeliverPolicy, ReplayPolicy } from 'nats.ws'
+import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
 
 const serverUri = 'ws://localhost:444'
 let subscriptions = [],
@@ -34,8 +34,9 @@ async function getStreams(startTime) {
 
   for (const stream of streams) {
     const consumerConfiguration = {
-        ack_policy: AckPolicy.Explicit,
+        ack_policy: AckPolicy.None, // we don't need to ack messages
         deliver_policy: DeliverPolicy.StartTime, // we want to start at a specific time
+        deliver_subject: createInbox(), // specify subject to make this consumer a push consumer
         description: 'apollo-jetstream debug consumer',
         opt_start_time: startTime, // start at the specified time
         replay_policy: ReplayPolicy.Instant // get messages as soon as possible
@@ -45,7 +46,7 @@ async function getStreams(startTime) {
         stream: stream.config.name
       }
 
-    const subscription = await js.pullSubscribe('>', consumerOptions)
+    const subscription = await js.subscribe('>', consumerOptions)
     subscriptions.push(subscription)
     ;(async () => {
       for await (const message of subscription) {
@@ -60,18 +61,9 @@ async function getStreams(startTime) {
           }
         }
 
-        message.ack()
         postMessage({ type: 'message', message: entry })
       }
     })()
-
-    const pull = () => {
-      subscription.pull({ batch: 1000, expires: 1000 })
-    }
-
-    pull()
-
-    pullInterval = setInterval(pull, 1000)
   }
 
   postMessage({

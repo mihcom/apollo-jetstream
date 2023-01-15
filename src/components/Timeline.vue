@@ -36,7 +36,7 @@ const store = useJetStreamStore(),
   selectedStream = ref(undefined),
   openDialog = ref(false)
 
-let refreshInterval
+let animationFrameRequestId
 
 onMounted(async () => {
   watch(() => store.streams, outputData)
@@ -51,7 +51,7 @@ onMounted(async () => {
 onBeforeUnmount(cleanup)
 
 function cleanup() {
-  clearInterval(refreshInterval)
+  cancelAnimationFrame(animationFrameRequestId)
   watchers.forEach(unwatch => unwatch())
 }
 
@@ -270,28 +270,37 @@ function outputData() {
   function captureLiveEvents() {
     stopLiveEvents()
 
-    refreshInterval = setInterval(() => {
-      xScale.domain(timeRange())
-      d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
+    let lastAnimated
 
-      g.selectAll('.message.out').remove()
+    function animate(now) {
+      if (!lastAnimated || now - lastAnimated > 1000) {
+        lastAnimated = now
+        xScale.domain(timeRange())
+        d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
-      g.selectAll('.message').each(function (d) {
-        const x = xScale(millis(d.timestampNanos)),
-          goingOut = x <= 5
+        g.selectAll('.message.out').remove()
 
-        d3.select(this)
-          .transition()
-          .attr('cx', x)
-          .attr('opacity', goingOut ? 0 : 1)
+        g.selectAll('.message').each(function (d) {
+          const x = xScale(millis(d.timestampNanos)),
+            goingOut = x <= 5
 
-        d3.select(this).classed('out', goingOut)
-      })
-    }, 1000)
+          d3.select(this)
+            .transition()
+            .attr('cx', x)
+            .attr('opacity', goingOut ? 0 : 1)
+
+          d3.select(this).classed('out', goingOut)
+        })
+      }
+
+      animationFrameRequestId = requestAnimationFrame(animate)
+    }
+
+    animationFrameRequestId = requestAnimationFrame(animate)
   }
 
   function stopLiveEvents() {
-    clearInterval(refreshInterval)
+    cancelAnimationFrame(animationFrameRequestId)
   }
 
   function displayCustomRange() {

@@ -1,7 +1,8 @@
 ﻿import { defineStore } from 'pinia'
-import { getStreams } from '../api/nats.js'
 import moment from 'moment'
 import { computed, ref, watch } from 'vue'
+import { useToast } from 'vue-toastification'
+import NatsWorker from '../api/nats?worker&inline'
 
 export const useJetStreamStore = defineStore('JetStream', () => {
   const timeRange = ref('Live'),
@@ -19,14 +20,35 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     }),
     startTime = computed(() => moment().subtract(duration.value).valueOf()),
     streams = ref([]),
-    messages = ref([])
+    messages = ref([]),
+    worker = new NatsWorker(),
+    toast = useToast()
+
+  worker.onmessage = event => {
+    const { data } = event
+
+    if (data.type === 'streams') {
+      streams.value = data.streams
+      loading.value = false
+    } else if (data.type === 'message') {
+      messages.value.push(data.message)
+    }
+  }
+
+  worker.onerror = error => {
+    toast.error(error.message, { timeout: 0 })
+  }
 
   watch(timeRange, () => fetchStreams())
 
   async function fetchStreams() {
     loading.value = true
-    streams.value = await getStreams(moment(startTime.value).toISOString(), messages)
-    loading.value = false
+    messages.value = []
+
+    worker.postMessage({
+      type: 'getStreams',
+      startTime: moment(startTime.value).toISOString()
+    })
   }
 
   // noinspection JSIgnoredPromiseFromCall

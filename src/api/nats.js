@@ -1,12 +1,18 @@
 import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
-import { useToast } from 'vue-toastification'
 
-const serverUri = 'ws://localhost:444',
-  toast = useToast()
-let subscriptions = []
+const serverUri = 'ws://localhost:444'
+let subscriptions = [],
+  pullInterval
 
-async function getStreams(startTime, messages) {
-  messages.value = []
+onmessage = event => {
+  const { startTime } = event.data
+
+  // noinspection JSIgnoredPromiseFromCall
+  getStreams(startTime)
+}
+
+async function getStreams(startTime) {
+  clearInterval(pullInterval)
 
   for (const subscription of subscriptions) {
     subscription.destroy()
@@ -19,8 +25,7 @@ async function getStreams(startTime, messages) {
   try {
     nc = await connect({ servers: serverUri })
   } catch (e) {
-    toast.error(`Failed to connect to NATS server at ${serverUri}`, { timeout: 0 })
-    throw e
+    throw `Failed to connect to NATS server at ${serverUri}`
   }
 
   const jsm = await nc.jetstreamManager(),
@@ -47,15 +52,22 @@ async function getStreams(startTime, messages) {
       for await (const message of subscription) {
         const entry = {
           stream,
-          message
+          message: {
+            info: message.info,
+            data: message.data,
+            headers: message.headers,
+            seq: message.seq,
+            subject: message.subject
+          }
         }
 
-        messages.value.push(entry)
+        postMessage({ type: 'message', message: entry })
       }
     })()
   }
 
-  return streams.sort((a, b) => a.config.name.localeCompare(b.config.name))
+  postMessage({
+    type: 'streams',
+    streams: streams.sort((a, b) => a.config.name.localeCompare(b.config.name))
+  })
 }
-
-export { getStreams }

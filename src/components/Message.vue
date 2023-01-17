@@ -52,7 +52,7 @@ watch(
       }
 
       messageContainer.value.appendChild(
-        new JSONFormatter(data, 2, {
+        new JSONFormatter(data, Number.POSITIVE_INFINITY, {
           animateOpen: true,
           animateClose: true,
           hoverPreviewEnabled: true,

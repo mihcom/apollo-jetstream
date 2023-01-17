@@ -7,6 +7,7 @@ import moment from 'moment'
 import pluralize from 'pluralize'
 import hotkeys from 'hotkeys-js'
 import { debounce } from 'debounce'
+import groupToMap from 'core-js/actual/array/group-to-map'
 
 const store = useJetStreamStore(),
   svgContainer = ref(null),
@@ -35,7 +36,7 @@ const store = useJetStreamStore(),
   selectedStream = ref(undefined),
   openDialog = ref(false)
 
-let refreshInterval
+let animationFrameRequestId
 
 onMounted(async () => {
   watch(() => store.streams, outputData)
@@ -50,7 +51,7 @@ onMounted(async () => {
 onBeforeUnmount(cleanup)
 
 function cleanup() {
-  clearInterval(refreshInterval)
+  cancelAnimationFrame(animationFrameRequestId)
   watchers.forEach(unwatch => unwatch())
 }
 
@@ -138,18 +139,22 @@ function outputData() {
         const messageMoment = moment(millis(x.timestampNanos))
 
         if (messageMoment.isBetween(start, end)) {
-          return acc + 1
+          acc.push(x)
         }
 
         return acc
-      }, 0)
+      }, [])
 
       tooltipText = `${start.format(dateFormat)} - ${end.format(dateFormat)} (${
         duration.asSeconds() > 3 ? duration.humanize() : duration.asMilliseconds() + ' ms'
       })`
 
-      if (elementsInRange > 0) {
-        tooltipText += `<br/>${elementsInRange} ${pluralize('message', elementsInRange)} in range`
+      if (elementsInRange.length > 0) {
+        tooltipText += `<br/>${elementsInRange.length} ${pluralize('message', elementsInRange.length)} in range<hr/>`
+
+        groupToMap(elementsInRange, x => x.stream).forEach((value, key) => {
+          tooltipText += `${key}: ${value.length} ${pluralize('message', value.length)}<br/>`
+        })
       }
     }
 
@@ -240,11 +245,15 @@ function outputData() {
           .append('circle')
           .attr('class', 'message')
           .attr('cx', d => xScale(millis(d.timestampNanos)))
-          .attr('cy', d => (yScale(d.stream) || 0) + 12)
+          .attr('cy', d => (yScale(d.stream) || 0) + 15)
           .attr('r', messageRadius)
           .attr('fill', d => accent(d.stream))
           .attr('opacity', 1)
-          .on('click', (_, d) => (store.selectedMessage = d.message))
+          .on('click', function (_, d) {
+            g.selectAll('.message.selected').classed('selected', false)
+            d3.select(this).classed('selected', true)
+            store.selectedMessage = d.message
+          })
           .append('title')
           .text(d => `${d.subject} at ${moment(millis(d.timestampNanos)).format('HH:mm:ss.SSS')}`)
       )
@@ -261,28 +270,37 @@ function outputData() {
   function captureLiveEvents() {
     stopLiveEvents()
 
-    refreshInterval = setInterval(() => {
-      xScale.domain(timeRange())
-      d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
+    let lastAnimated
 
-      g.selectAll('.message.out').remove()
+    function animate(now) {
+      if (!lastAnimated || now - lastAnimated > 1000) {
+        lastAnimated = now
+        xScale.domain(timeRange())
+        d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
-      g.selectAll('.message').each(function (d) {
-        const x = xScale(millis(d.timestampNanos)),
-          goingOut = x <= 5
+        g.selectAll('.message.out').remove()
 
-        d3.select(this)
-          .transition()
-          .attr('cx', x)
-          .attr('opacity', goingOut ? 0 : 1)
+        g.selectAll('.message').each(function (d) {
+          const x = xScale(millis(d.timestampNanos)),
+            goingOut = x <= 5
 
-        d3.select(this).classed('out', goingOut)
-      })
-    }, 1000)
+          d3.select(this)
+            .transition()
+            .attr('cx', x)
+            .attr('opacity', goingOut ? 0 : 1)
+
+          d3.select(this).classed('out', goingOut)
+        })
+      }
+
+      animationFrameRequestId = requestAnimationFrame(animate)
+    }
+
+    animationFrameRequestId = requestAnimationFrame(animate)
   }
 
   function stopLiveEvents() {
-    clearInterval(refreshInterval)
+    cancelAnimationFrame(animationFrameRequestId)
   }
 
   function displayCustomRange() {
@@ -291,7 +309,7 @@ function outputData() {
     xScale.domain(domain)
     d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
-    g.selectAll('.message').call(d => d.transition().attr('x', d => xScale(millis(d.timestampNanos))))
+    g.selectAll('.message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
   }
 }
 </script>
@@ -430,6 +448,10 @@ ul.limits
   stroke-width 1px
   margin-top 0.5em
   cursor pointer
+
+  &.selected
+    fill red
+    stroke-width 2px
 
   &:hover
     fill #646cff

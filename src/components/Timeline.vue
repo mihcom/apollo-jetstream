@@ -149,6 +149,12 @@ function outputData() {
         duration.asSeconds() > 3 ? duration.humanize() : duration.asMilliseconds() + ' ms'
       })`
 
+      if (e.shiftKey) {
+        elementsInRange.forEach((message, i) => {
+          console.log(i, JSON.parse(new TextDecoder().decode(message.data)))
+        })
+      }
+
       if (elementsInRange.length > 0) {
         tooltipText += `<br/>${elementsInRange.length} ${pluralize('message', elementsInRange.length)} in range<hr/>`
 

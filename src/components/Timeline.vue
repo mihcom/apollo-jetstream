@@ -11,8 +11,6 @@ import groupToMap from 'core-js/actual/array/group-to-map'
 
 const store = useJetStreamStore(),
   svgContainer = ref(null),
-  windowWidth = ref(window.innerWidth),
-  windowHeight = ref(window.innerHeight),
   timeRanges = [
     'Live',
     'Last 5 minutes',
@@ -39,13 +37,19 @@ const store = useJetStreamStore(),
 let animationFrameRequestId
 
 onMounted(async () => {
+  // output data when streams are changed
   watch(() => store.streams, outputData)
-  outputData()
+
+  // output data when window is resized
+  window.onresize = debounce(outputData, 100)
 
   hotkeys('esc', () => {
     customRanges.value.shift()
     customRanges.value = [...customRanges.value]
   })
+
+  // output data on load
+  outputData()
 })
 
 onBeforeUnmount(cleanup)
@@ -64,14 +68,14 @@ function outputData() {
     messages = store.messages,
     leftMargin = 120,
     rightMargin = 50,
-    width = windowWidth.value - rightMargin,
-    height = windowHeight.value / 2 - 30,
+    width = window.innerWidth - rightMargin,
+    height = window.innerHeight / 2 - 30,
     svg = d3
       .select(svgContainer.value)
       .append('svg')
       .attr('class', 'timeline')
-      .attr('width', windowWidth.value)
-      .attr('height', windowHeight.value / 2),
+      .attr('width', window.innerWidth)
+      .attr('height', window.innerHeight / 2),
     rangeSelector = d3
       .select('svg.timeline')
       .append('rect')
@@ -324,7 +328,7 @@ function outputData() {
   <v-select :items="timeRanges" outlines density="compact" variant="underlined" v-model="store.timeRange">
     <template v-slot:selection="data"> {{ rangeUi() }} </template>
   </v-select>
-  <div ref="svgContainer" />
+  <div ref="svgContainer" class="svg-container" />
   <v-progress-linear color="yellow-darken-2" indeterminate :active="store.loading" />
   <v-dialog v-model="openDialog" max-width="40em">
     <v-card>

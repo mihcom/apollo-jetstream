@@ -67,5 +67,15 @@ watch(
 </script>
 
 <template>
-  <div ref="messageContainer"></div>
+  <div ref="messageContainer" class="message-container"></div>
 </template>
+
+<style scoped lang="stylus">
+.message-container
+  height 50%
+  position fixed
+  top 0
+  left 0
+  overflow auto
+  width 100%
+</style>

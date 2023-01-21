@@ -13,5 +13,3 @@ import Timeline from './components/Timeline.vue'
     </v-footer>
   </v-app>
 </template>
-
-<style scoped></style>

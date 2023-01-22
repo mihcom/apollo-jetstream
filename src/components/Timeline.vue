@@ -204,6 +204,7 @@ function outputData() {
     .call(d3.axisLeft(yScale))
     .selectAll('text')
     .style('fill', d => accent(d))
+    .attr('data-stream', d => d)
 
   g.selectAll('.axis--y .tick').on('click', (_, streamName) => {
     const stream = streams.find(x => x.config.name === streamName)
@@ -259,6 +260,7 @@ function outputData() {
           .attr('r', messageRadius)
           .attr('fill', d => accent(d.stream))
           .attr('opacity', 1)
+          .attr('data-stream', d => d.stream)
           .on('click', function (_, d) {
             g.selectAll('.message.selected').classed('selected', false)
             d3.select(this).classed('selected', true)
@@ -290,6 +292,8 @@ function outputData() {
 
         g.selectAll('.message.out').remove()
 
+        updateStreamStatistics()
+
         g.selectAll('.message').each(function (d) {
           const x = xScale(millis(d.timestampNanos)),
             goingOut = x <= 5
@@ -320,6 +324,24 @@ function outputData() {
     d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
     g.selectAll('.message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
+
+    updateStreamStatistics()
+  }
+
+  function updateStreamStatistics() {
+    const messages = g.selectAll('.message').filter(d => {
+        const x = xScale(millis(d.timestampNanos))
+        return x >= 0 && x <= width
+      }),
+      streamsStatistics = groupToMap(messages.data(), x => x.stream)
+
+    d3.selectAll('text[data-stream]').each(function () {
+      d3.select(this).text(this.dataset.stream)
+    })
+
+    streamsStatistics.forEach((value, key) => {
+      d3.select(`text[data-stream="${key}"]`).text(`${key} (${value.length})`)
+    })
   }
 }
 </script>

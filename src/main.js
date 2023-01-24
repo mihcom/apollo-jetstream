@@ -5,6 +5,7 @@ import vuetify from './plugins/vuetify'
 import { loadFonts } from './plugins/webfontloader'
 import Toast, { useToast } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
+import checkUpdates from './services/check-updates'
 
 loadFonts()
 
@@ -25,3 +26,5 @@ window.onunhandledrejection = function (errorEvent) {
 }
 
 createApp(App).use(vuetify).use(createPinia()).use(Toast, toastOptions).mount('#app')
+
+checkUpdates('v0.1.0-beta2')

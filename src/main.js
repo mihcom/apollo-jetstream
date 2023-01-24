@@ -27,4 +27,4 @@ window.onunhandledrejection = function (errorEvent) {
 
 createApp(App).use(vuetify).use(createPinia()).use(Toast, toastOptions).mount('#app')
 
-checkUpdates('v0.1.0-beta2')
+checkUpdates('v0.2.1-beta2')

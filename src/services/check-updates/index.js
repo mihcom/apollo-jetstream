@@ -5,7 +5,7 @@ import { useToast } from 'vue-toastification'
 export default async function checkUpdates(appVersion) {
   const octokit = new Octokit(),
     releases = (await octokit.rest.repos.listReleases({ owner: 'mihcom', repo: 'apollo-jetstream' })).data,
-    lastRelease = releases.pop(),
+    lastRelease = releases[0],
     ignoreVersionKey = 'ignoreUpdates',
     ignoreVersion = localStorage.getItem(ignoreVersionKey)
 

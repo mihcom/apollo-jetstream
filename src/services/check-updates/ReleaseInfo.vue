@@ -26,7 +26,10 @@ const props = defineProps({
     </div>
   </div>
   <div class="actions">
-    <a href="https://github.com/mihcom/apollo-jetstream#running" target="_blank">How to apply?</a>
+    <div>
+      <a href="https://github.com/mihcom/apollo-jetstream/releases" target="_blank">See release history</a>
+      <a href="https://github.com/mihcom/apollo-jetstream#running" target="_blank">How to apply?</a>
+    </div>
     <button class="button" @click="$emit('ignore')">Ignore</button>
   </div>
 </template>
@@ -50,7 +53,7 @@ const props = defineProps({
 .actions
   margin-top 1em
   display flex
-  justify-content flex-end
+  justify-content space-between
 
   *
     margin-left 1em

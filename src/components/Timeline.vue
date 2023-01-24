@@ -66,7 +66,7 @@ function outputData() {
 
   const streams = store.streams,
     messages = store.messages,
-    leftMargin = 120,
+    leftMargin = 130,
     rightMargin = 50,
     width = window.innerWidth - rightMargin,
     height = window.innerHeight / 2 - 30,
@@ -445,7 +445,7 @@ function outputData() {
 .v-select
   position absolute
   right 1em
-  top 1em
+  top 0
   width 15em
 
 .v-progress-linear

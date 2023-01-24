@@ -58,7 +58,8 @@ watch(
 
 <template>
   <div ref="messageContainer" class="message-container">
-    <JsonEditorVue v-model="viewModelBinding" class="jse-theme-dark" readOnly />
+    <JsonEditorVue v-model="viewModelBinding" class="jse-theme-dark" readOnly v-show="viewModelBinding" />
+    <div class="no-message" v-show="!viewModelBinding">Select a message to see its content</div>
   </div>
 </template>
 
@@ -70,4 +71,10 @@ watch(
   left 0
   overflow auto
   width 100%
+
+.no-message
+  height 100%
+  display flex
+  align-items center
+  justify-content center
 </style>

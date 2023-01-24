@@ -25,10 +25,12 @@
     "pinia": "^2.0.28",
     "pluralize": "^8.0.0",
     "roboto-fontface": "*",
+    "semver": "^7.3.8",
     "uuid": "^9.0.0",
     "vanilla-jsoneditor": "^0.14.0",
     "vue": "^3.2.45",
     "vue-toastification": "^2.0.0-rc.5",
+    "vue3-perfect-scrollbar": "^1.6.1",
     "vuetify": "^3.0.0-beta.0",
     "webfontloader": "^1.0.0"
   },

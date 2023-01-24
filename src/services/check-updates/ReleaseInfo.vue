@@ -2,27 +2,41 @@
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import moment from 'moment'
-import { toRef } from 'vue'
+import { toRefs } from 'vue'
+import pluralize from 'pluralize'
+import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
+import 'vue3-perfect-scrollbar/dist/vue3-perfect-scrollbar.css'
 
 const props = defineProps({
-    version: {
-      type: Object,
+    releases: {
+      type: Array,
+      required: true
+    },
+    appVersion: {
+      type: String,
       required: true
     }
   }),
-  version = toRef(props, 'version')
+  { releases, appVersion } = toRefs(props)
 </script>
 
 <template>
   <div class="version">
-    <img class="avatar" :src="version.author.avatar_url" />
+    <img class="avatar" :src="releases[0].author.avatar_url" />
     <div>
       <div class="title">
-        New release <a class="emphasize" :href="version.html_url" target="_blank">{{ version.tag_name }}</a> is available since
-        <span class="emphasize">{{ moment(version.created_at).local().format('DD MMMM YYYY') }}</span
-        >!
+        Your release <span class="emphasize">{{ appVersion }}</span> is {{ releases.length }} {{ pluralize('release', releases.length) }} behind!
       </div>
-      <div v-html="DOMPurify.sanitize(marked(version.body))"></div>
+      <perfect-scrollbar>
+        <div class="release" v-for="release in releases" :key="release.id">
+          <div class="title">
+            <a class="emphasize" :href="release.html_url" target="_blank">{{ release.tag_name }}</a> was released
+            <span class="emphasize">{{ moment(release.created_at).local().format('DD MMMM YYYY') }}</span
+            >!
+          </div>
+          <div v-html="DOMPurify.sanitize(marked(release.body))"></div>
+        </div>
+      </perfect-scrollbar>
     </div>
   </div>
   <div class="actions">
@@ -44,9 +58,6 @@ const props = defineProps({
     border-radius 50%
     margin-right 1em
 
-  .title
-    margin-bottom 1em
-
   .emphasize
     font-weight bold
 
@@ -61,6 +72,20 @@ const props = defineProps({
 a
   text-decoration none
   color yellow
+
+.ps
+  max-height 20em
+
+  .release
+    background-color #2186F3
+    border-radius 10px
+    margin-top: 1em
+    padding 1em
+    box-shadow 3px 3px 3px rgba(0,0,0,0.32)
+    width 96%
+
+.title
+  margin-bottom 1em
 </style>
 
 <style lang="stylus">

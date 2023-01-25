@@ -6,29 +6,17 @@ import { millis } from 'nats.ws'
 import moment from 'moment'
 import pluralize from 'pluralize'
 import hotkeys from 'hotkeys-js'
-import { debounce } from 'debounce'
+import { throttle } from 'throttle-debounce'
 import groupToMap from 'core-js/actual/array/group-to-map'
 
 const store = useJetStreamStore(),
   svgContainer = ref(null),
-  timeRanges = [
-    'Live',
-    'Last 5 minutes',
-    'Last 15 minutes',
-    'Last 30 minutes',
-    'Last 1 hour',
-    'Last 2 hours',
-    'Last 4 hours',
-    'Last 8 hours',
-    'Last 24 hours'
-  ],
+  timeRanges = ['Live', 'Last 5 minutes', 'Last 15 minutes', 'Last 30 minutes', 'Last 1 hour', 'Last 2 hours', 'Last 4 hours', 'Last 8 hours', 'Last 24 hours'],
   customRanges = ref([]),
   dateFormat = 'HH:mm:ss.SSS',
   rangeUi = () =>
     customRanges.value.length
-      ? `${moment(customRanges.value[0][0]).format(dateFormat)} - ${moment(customRanges.value[0][1]).format(
-          dateFormat
-        )}`
+      ? `${moment(customRanges.value[0][0]).format(dateFormat)} - ${moment(customRanges.value[0][1]).format(dateFormat)}`
       : store.timeRange,
   watchers = [],
   selectedStream = ref(undefined),
@@ -41,7 +29,7 @@ onMounted(async () => {
   watch(() => store.streams, outputData)
 
   // output data when window is resized
-  window.onresize = debounce(outputData, 100)
+  window.onresize = throttle(500, outputData, { noLeading: true })
 
   hotkeys('esc', () => {
     customRanges.value.shift()
@@ -76,14 +64,7 @@ function outputData() {
       .attr('class', 'timeline')
       .attr('width', window.innerWidth)
       .attr('height', window.innerHeight / 2),
-    rangeSelector = d3
-      .select('svg.timeline')
-      .append('rect')
-      .attr('class', 'range-selector')
-      .attr('x', 0)
-      .attr('y', 0)
-      .attr('width', 0)
-      .attr('height', height),
+    rangeSelector = d3.select('svg.timeline').append('rect').attr('class', 'range-selector').attr('x', 0).attr('y', 0).attr('width', 0).attr('height', height),
     tooltip = d3.select(svgContainer.value).append('div').attr('class', 'tooltip').style('opacity', 0),
     timeRange = () => [Date.now() - store.duration, Date.now()],
     mouseDown = ref(undefined),
@@ -100,6 +81,8 @@ function outputData() {
       .domain(streams.map(x => x.config.name))
       .range(d3.schemeTableau10),
     g = svg.append('g').attr('transform', 'translate(' + leftMargin + ',' + 10 + ')')
+
+  let animationContainerStart = timeRange()[0]
 
   svg.on('mousedown', e => {
     mouseDown.value = e.offsetX
@@ -206,6 +189,12 @@ function outputData() {
     .style('fill', d => accent(d))
     .attr('data-stream', d => d)
 
+  // add the animation container
+  const animationContainer = g.append('g').attr('class', 'animation-container'),
+    messagesCoordinatesMap = new Map()
+
+  window.messagesCoordinatesMap = messagesCoordinatesMap
+
   g.selectAll('.axis--y .tick').on('click', (_, streamName) => {
     const stream = streams.find(x => x.config.name === streamName)
     selectedStream.value = stream
@@ -223,7 +212,6 @@ function outputData() {
     data = computed(() => messages.map(prepareDataEntry)),
     messageRadius = 5
 
-  renderData()
   manageLiveEvents()
 
   watchers.push(
@@ -246,23 +234,38 @@ function outputData() {
     })
   )
 
-  watchers.push(watch(data, debounce(renderData, 100)))
+  watchers.push(watch(data, throttle(333, renderData, { noLeading: true })))
 
   function renderData() {
-    g.selectAll('.message')
+    animationContainer
+      .selectAll('.message')
       .data(data.value, d => d.id)
       .join(enter =>
         enter
           .append('circle')
           .attr('class', 'message')
-          .attr('cx', d => xScale(millis(d.timestampNanos)))
-          .attr('cy', d => (yScale(d.stream) || 0) + 15)
+          .attr('cx', function (d) {
+            const xCoordinate = xScale(millis(d.timestampNanos)) - xScale(animationContainerStart),
+              cacheKey = Math.floor(xCoordinate)
+
+            let cache = messagesCoordinatesMap.get(cacheKey)
+
+            if (!cache) {
+              cache = []
+              messagesCoordinatesMap.set(cacheKey, cache)
+            }
+
+            cache.push(this)
+
+            return xCoordinate
+          })
+          .attr('cy', d => yScale(d.stream) + 5)
           .attr('r', messageRadius)
           .attr('fill', d => accent(d.stream))
           .attr('opacity', 1)
           .attr('data-stream', d => d.stream)
           .on('click', function (_, d) {
-            g.selectAll('.message.selected').classed('selected', false)
+            animationContainer.selectAll('.message.selected').classed('selected', false)
             d3.select(this).classed('selected', true)
             store.selectedMessage = d.message
           })
@@ -284,27 +287,30 @@ function outputData() {
 
     let lastAnimated
 
+    animationContainerStart = timeRange()[0]
+
     function animate(now) {
       if (!lastAnimated || now - lastAnimated > 1000) {
         lastAnimated = now
         xScale.domain(timeRange())
-        d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
+        svg.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
-        g.selectAll('.message.out').remove()
+        const animationContainerStartScaled = xScale(animationContainerStart)
+
+        animationContainer.transition().attr('transform', `translate(${animationContainerStartScaled}, 10)`)
+        animationContainer.selectAll('.message.out').remove()
+
+        for (let [x, elements] of messagesCoordinatesMap) {
+          if (x + animationContainerStartScaled <= 10) {
+            elements.forEach(e => {
+              d3.select(e).transition().attr('opacity', 0)
+              d3.select(e).classed('out', true)
+            })
+            messagesCoordinatesMap.delete(x)
+          }
+        }
 
         updateStreamStatistics()
-
-        g.selectAll('.message').each(function (d) {
-          const x = xScale(millis(d.timestampNanos)),
-            goingOut = x <= 5
-
-          d3.select(this)
-            .transition()
-            .attr('cx', x)
-            .attr('opacity', goingOut ? 0 : 1)
-
-          d3.select(this).classed('out', goingOut)
-        })
       }
 
       animationFrameRequestId = requestAnimationFrame(animate)
@@ -323,13 +329,26 @@ function outputData() {
     xScale.domain(domain)
     d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
 
-    g.selectAll('.message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
+    animationContainer.selectAll('.message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
 
-    updateStreamStatistics()
+    updateStreamStatistics(true)
   }
 
-  function updateStreamStatistics() {
-    const messages = g.selectAll('.message').filter(d => {
+  let lastStreamStatisticsSize = undefined,
+    lastStreamStatisticsMin = undefined
+
+  function updateStreamStatistics(force) {
+    const statisticsSize = messagesCoordinatesMap.size,
+      statisticsMin = messagesCoordinatesMap.keys().next().value
+
+    if (!force && lastStreamStatisticsSize === statisticsSize && lastStreamStatisticsMin === statisticsMin) {
+      return
+    }
+
+    lastStreamStatisticsSize = statisticsSize
+    lastStreamStatisticsMin = statisticsMin
+
+    const messages = animationContainer.selectAll('.message').filter(d => {
         const x = xScale(millis(d.timestampNanos))
         return x >= 0 && x <= width
       }),
@@ -371,9 +390,7 @@ function outputData() {
           <v-col
             >{{ selectedStream?.config.retention }}
             <ul class="limits">
-              <li v-if="selectedStream?.config.max_age > 0">
-                {{ moment.duration(millis(selectedStream?.config.max_age)).humanize() }} lifetime
-              </li>
+              <li v-if="selectedStream?.config.max_age > 0">{{ moment.duration(millis(selectedStream?.config.max_age)).humanize() }} lifetime</li>
               <li v-if="selectedStream?.config.max_bytes > 0">
                 {{ selectedStream?.config.max_bytes }} bytes ({{
                   (selectedStream?.config.max_bytes / 1024 / 1024).toLocaleString('da-DK', {
@@ -383,9 +400,7 @@ function outputData() {
                   })
                 }})
               </li>
-              <li v-if="selectedStream?.config.max_msgs > 0">
-                {{ selectedStream?.config.max_msgs.toLocaleString('da-DK') }} messages
-              </li>
+              <li v-if="selectedStream?.config.max_msgs > 0">{{ selectedStream?.config.max_msgs.toLocaleString('da-DK') }} messages</li>
             </ul>
           </v-col>
         </v-row>

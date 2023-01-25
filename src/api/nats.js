@@ -32,6 +32,11 @@ async function getStreams(startTime) {
     js = nc.jetstream(),
     streams = await jsm.streams.list().next()
 
+  postMessage({
+    type: 'streams',
+    streams: streams.sort((a, b) => a.config.name.localeCompare(b.config.name))
+  })
+
   for (const stream of streams) {
     const consumerConfiguration = {
         ack_policy: AckPolicy.None, // we don't need to ack messages
@@ -65,9 +70,4 @@ async function getStreams(startTime) {
       }
     })()
   }
-
-  postMessage({
-    type: 'streams',
-    streams: streams.sort((a, b) => a.config.name.localeCompare(b.config.name))
-  })
 }

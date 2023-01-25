@@ -331,17 +331,17 @@ function outputData() {
 
     animationContainer.selectAll('.message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
 
-    updateStreamStatistics()
+    updateStreamStatistics(true)
   }
 
   let lastStreamStatisticsSize = undefined,
     lastStreamStatisticsMin = undefined
 
-  function updateStreamStatistics() {
+  function updateStreamStatistics(force) {
     const statisticsSize = messagesCoordinatesMap.size,
       statisticsMin = messagesCoordinatesMap.keys().next().value
 
-    if (lastStreamStatisticsSize === statisticsSize && lastStreamStatisticsMin === statisticsMin) {
+    if (!force && lastStreamStatisticsSize === statisticsSize && lastStreamStatisticsMin === statisticsMin) {
       return
     }
 

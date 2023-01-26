@@ -10,6 +10,7 @@ This web application that allows you to debug your JetStream applications.
 ## Running
 
 - `git clone`/`git pull`
+- `yarn install`
 - `yarn build`
 - `yarn serve`
 - Open http://localhost:4173/apollo-jetstream/

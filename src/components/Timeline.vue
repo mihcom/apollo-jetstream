@@ -29,7 +29,7 @@ onMounted(async () => {
   watch(() => store.streams, outputData)
 
   // output data when window is resized
-  window.onresize = throttle(500, outputData, { noLeading: true })
+  window.onresize = throttle(500, () => outputData(true), { noLeading: true })
 
   hotkeys('esc', () => {
     customRanges.value.shift()
@@ -47,7 +47,7 @@ function cleanup() {
   watchers.forEach(unwatch => unwatch())
 }
 
-function outputData() {
+function outputData(forceRender) {
   cleanup()
 
   d3.select(svgContainer.value).selectAll('*').remove()
@@ -214,6 +214,10 @@ function outputData() {
 
   manageLiveEvents()
 
+  if (forceRender) {
+    renderData()
+  }
+
   watchers.push(
     watch(
       () => store.timeRange,
@@ -370,7 +374,7 @@ function outputData() {
     <template v-slot:selection="data"> {{ rangeUi() }} </template>
   </v-select>
   <div ref="svgContainer" class="svg-container" />
-  <v-progress-linear color="yellow-darken-2" indeterminate :active="store.loading" />
+  <v-progress-linear color="grey-darken-3" indeterminate location="bottom" absolute :active="store.loading" />
   <v-dialog v-model="openDialog" max-width="40em">
     <v-card>
       <v-toolbar color="primary" dense>
@@ -422,7 +426,7 @@ function outputData() {
         </v-row>
         <v-row>
           <v-col><v-icon>mdi-human-queue</v-icon> Consumers</v-col>
-          <v-col>{{ selectedStream?.state.consumer_count.toLocaleString('da-DK') }}</v-col>
+          <v-col>{{ (selectedStream?.state.consumer_count - 1).toLocaleString('da-DK') }}</v-col>
         </v-row>
         <v-row>
           <v-col><v-icon>mdi-calendar-clock</v-icon> First message</v-col>
@@ -462,13 +466,6 @@ function outputData() {
   right 1em
   top 0
   width 15em
-
-.v-progress-linear
-  position absolute
-  bottom 0
-  left 0
-  width 100%
-  z-index 100
 
 .v-col:first-child
   flex 0 0 12em

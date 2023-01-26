@@ -2,6 +2,7 @@
 import moment from 'moment'
 import { computed, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
+import { debounce } from 'throttle-debounce'
 import NatsWorker from '../api/nats?worker&inline'
 
 export const useJetStreamStore = defineStore('JetStream', () => {
@@ -25,13 +26,16 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     toast = useToast()
 
   worker.onmessage = event => {
-    const { data } = event
+    const { data } = event,
+      cancelLoading = debounce(500, () => (loading.value = false)),
+      cancelLoadingOnTimeout = setTimeout(() => cancelLoading(), 500)
 
     if (data.type === 'streams') {
       streams.value = data.streams
-      loading.value = false
     } else if (data.type === 'message') {
       messages.value.push(data.message)
+      cancelLoading()
+      clearTimeout(cancelLoadingOnTimeout)
     }
   }
 

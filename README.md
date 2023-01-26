@@ -10,5 +10,6 @@ This web application that allows you to debug your JetStream applications.
 ## Running
 
 - `git clone`/`git pull`
-- `yarn install`
-- `yarn dev`
+- `yarn build`
+- `yarn serve`
+- Open http://127.0.0.1:4173/

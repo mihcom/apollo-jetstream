@@ -8,4 +8,7 @@ import vuetify from "vite-plugin-vuetify";
 export default defineConfig({
   base: "/apollo-jetstream/",
   plugins: [vue(), vuetify({ autoImport: true })],
+  resolve: {
+    extensions: [".js", ".vue", ".json", ".ts", ".tsx"],
+  },
 });

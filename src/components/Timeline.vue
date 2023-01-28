@@ -193,8 +193,6 @@ function outputData(forceRender) {
   const animationContainer = g.append('g').attr('class', 'animation-container'),
     messagesCoordinatesMap = new Map()
 
-  window.messagesCoordinatesMap = messagesCoordinatesMap
-
   g.selectAll('.axis--y .tick').on('click', (_, streamName) => {
     const stream = streams.find(x => x.config.name === streamName)
     selectedStream.value = stream
@@ -203,11 +201,11 @@ function outputData(forceRender) {
 
   const prepareDataEntry = x => ({
       stream: x.stream.config.name,
-      subject: x.message.subject,
-      data: x.message.data,
-      id: x.message.reply,
-      timestampNanos: x.message.info.timestampNanos,
-      message: x.message
+      subject: x.subject,
+      data: x.data,
+      id: x.reply,
+      timestampNanos: x.info.timestampNanos,
+      message: x
     }),
     data = computed(() => messages.map(prepareDataEntry)),
     messageRadius = 5
@@ -263,7 +261,7 @@ function outputData(forceRender) {
 
             return xCoordinate
           })
-          .attr('cy', d => yScale(d.stream) + 5)
+          .attr('cy', d => yScale(d.stream) + 15)
           .attr('r', messageRadius)
           .attr('fill', d => accent(d.stream))
           .attr('opacity', 1)

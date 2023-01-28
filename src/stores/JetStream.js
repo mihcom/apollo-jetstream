@@ -30,12 +30,23 @@ export const useJetStreamStore = defineStore('JetStream', () => {
       cancelLoading = debounce(500, () => (loading.value = false)),
       cancelLoadingOnTimeout = setTimeout(() => cancelLoading(), 500)
 
-    if (data.type === 'streams') {
-      streams.value = data.streams
-    } else if (data.type === 'message') {
-      messages.value.push(data.message)
-      cancelLoading()
-      clearTimeout(cancelLoadingOnTimeout)
+    switch (data.type) {
+      case 'streams':
+        streams.value = data.streams
+        break
+
+      case 'message':
+        messages.value.push(data.message)
+        cancelLoading()
+        clearTimeout(cancelLoadingOnTimeout)
+        break
+
+      case 'messageTrace':
+        messagesTraceCache.get(data.message.messageId).value.push(data.message)
+        break
+
+      default:
+        throw `Unknown message type: ${data.type}`
     }
   }
 
@@ -55,7 +66,25 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     })
   }
 
-  // noinspection JSIgnoredPromiseFromCall
+  const messagesTraceCache = new Map()
+  function fetchMessageTrace(messageId) {
+    let messageTrace = messagesTraceCache.get(messageId)
+
+    if (messageTrace) {
+      return messageTrace
+    }
+
+    messageTrace = ref([])
+    messagesTraceCache.set(messageId, messageTrace)
+
+    worker.postMessage({
+      type: 'fetchMessageTrace',
+      messageId
+    })
+
+    return messageTrace
+  }
+
   fetchStreams()
 
   return {
@@ -65,6 +94,7 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     streams,
     loading,
     messages,
-    selectedMessage: ref(undefined)
+    selectedMessage: ref(undefined),
+    fetchMessageTrace
   }
 })

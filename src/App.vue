@@ -1,6 +1,6 @@
 <script setup>
-import Message from './components/Message.vue'
-import Timeline from './components/Timeline.vue'
+import Message from './components/Message'
+import Timeline from './components/Timeline'
 </script>
 
 <template>
@@ -13,3 +13,5 @@ import Timeline from './components/Timeline.vue'
     </v-footer>
   </v-app>
 </template>
+
+<style scoped lang="stylus"></style>

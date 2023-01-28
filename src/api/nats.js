@@ -1,15 +1,30 @@
 import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
 
-const serverUri = 'ws://localhost:444'
+onmessage = event => {
+  const { type } = event.data
+
+  switch (type) {
+    case 'getStreams':
+      // noinspection JSIgnoredPromiseFromCall
+      getStreams(event.data.startTime)
+      break
+
+    case 'fetchMessageTrace':
+      // noinspection JSIgnoredPromiseFromCall
+      fetchMessageTrace(event.data.messageId)
+      break
+
+    default:
+      throw `Unknown message type: ${type}`
+  }
+}
+
+const serverUri = 'ws://localhost:444',
+  tracingStreamName = 'Tracing',
+  connectionPromise = connect({ servers: serverUri })
+
 let subscriptions = [],
   pullInterval
-
-onmessage = event => {
-  const { startTime } = event.data
-
-  // noinspection JSIgnoredPromiseFromCall
-  getStreams(startTime)
-}
 
 async function getStreams(startTime) {
   clearInterval(pullInterval)
@@ -20,17 +35,11 @@ async function getStreams(startTime) {
 
   subscriptions = []
 
-  let nc
+  const natsConnection = await getNatsConnection(),
+    jetStreamManager = await natsConnection.jetstreamManager(),
+    jetStreamClient = natsConnection.jetstream()
 
-  try {
-    nc = await connect({ servers: serverUri })
-  } catch (e) {
-    throw `Failed to connect to NATS server at ${serverUri}`
-  }
-
-  const jsm = await nc.jetstreamManager(),
-    js = nc.jetstream(),
-    streams = await jsm.streams.list().next()
+  const streams = (await jetStreamManager.streams.list().next()).filter(x => x.config.name !== tracingStreamName)
 
   postMessage({
     type: 'streams',
@@ -38,36 +47,78 @@ async function getStreams(startTime) {
   })
 
   for (const stream of streams) {
-    const consumerConfiguration = {
-        ack_policy: AckPolicy.None, // we don't need to ack messages
+    await createConsumer({
+      jetStreamClient,
+      streamName: stream.config.name,
+      consumerConfigurationOverride: {
         deliver_policy: DeliverPolicy.StartTime, // we want to start at a specific time
-        deliver_subject: createInbox(), // specify subject to make this consumer a push consumer
-        description: 'apollo-jetstream debug consumer',
-        opt_start_time: startTime, // start at the specified time
-        replay_policy: ReplayPolicy.Instant // get messages as soon as possible
+        opt_start_time: startTime
       },
-      consumerOptions = {
-        config: consumerConfiguration,
-        stream: stream.config.name
-      }
-
-    const subscription = await js.subscribe('>', consumerOptions)
-    subscriptions.push(subscription)
-    ;(async () => {
-      for await (const message of subscription) {
+      onMessage: message => {
         const entry = {
           stream,
-          message: {
-            info: message.info,
-            data: message.data,
-            headers: message.headers,
-            seq: message.seq,
-            subject: message.subject
-          }
+          info: message.info,
+          data: message.data,
+          headers: message.headers?.headers,
+          seq: message.seq,
+          subject: message.subject
         }
 
         postMessage({ type: 'message', message: entry })
       }
-    })()
+    })
+  }
+}
+
+async function fetchMessageTrace(messageId) {
+  const natsConnection = await getNatsConnection(),
+    jetStreamClient = natsConnection.jetstream()
+
+  await createConsumer({
+    jetStreamClient,
+    streamName: tracingStreamName,
+    subject: `Tracing.${messageId}`,
+    onMessage: message => {
+      const entry = {
+        messageId,
+        info: message.info,
+        data: message.data,
+        headers: message.headers?.headers,
+        seq: message.seq
+      }
+
+      postMessage({ type: 'messageTrace', message: entry })
+    }
+  })
+}
+
+async function createConsumer(options) {
+  const { jetStreamClient, streamName, consumerConfigurationOverride, onMessage, subject = '>' } = options,
+    consumerConfiguration = {
+      ack_policy: AckPolicy.None, // we don't need to ack messages
+      deliver_subject: createInbox(), // specify subject to make this consumer a push consumer
+      description: 'apollo-jetstream debug consumer',
+      replay_policy: ReplayPolicy.Instant, // get messages as soon as possible
+      ...consumerConfigurationOverride
+    },
+    consumerOptions = {
+      config: consumerConfiguration,
+      stream: streamName
+    },
+    subscription = await jetStreamClient.subscribe(subject, consumerOptions)
+
+  subscriptions.push(subscription)
+  ;(async () => {
+    for await (const message of subscription) {
+      onMessage(message)
+    }
+  })()
+}
+
+async function getNatsConnection() {
+  try {
+    return await connectionPromise
+  } catch (e) {
+    throw `Failed to connect to NATS server at ${serverUri}`
   }
 }

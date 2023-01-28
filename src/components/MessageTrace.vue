@@ -125,7 +125,13 @@ function formatDuration(duration) {
             <template v-slot:opposite>
               {{ moment(millis(store.selectedMessage.info.timestampNanos)).format('HH:mm:ss.SSS') }}
             </template>
-            <v-alert :value="true" color="#25a5be">Message published</v-alert>
+            <v-alert
+              :value="true"
+              color="#25a5be"
+              @mouseenter="store.selectedTimestamp = store.selectedMessage.info.timestampNanos"
+              @mouseleave="store.selectedTimestamp = undefined"
+              >Message published</v-alert
+            >
           </v-timeline-item>
           <v-timeline-item
             v-for="(traceEntry, index) in services.get(service.values().next().value)"
@@ -140,9 +146,13 @@ function formatDuration(duration) {
               </div>
               {{ moment(millis(traceEntry.info.timestampNanos)).format('HH:mm:ss.SSS') }}
             </template>
-            <v-alert :value="true" :color="getTraceColor(traceEntry)">{{
-              getTraceException(traceEntry) || traceEntry.headers.get('Tracing.Headers.Event.Name')[0]
-            }}</v-alert>
+            <v-alert
+              :value="true"
+              :color="getTraceColor(traceEntry)"
+              @mouseenter="store.selectedTimestamp = traceEntry.info.timestampNanos"
+              @mouseleave="store.selectedTimestamp = undefined"
+              >{{ getTraceException(traceEntry) || traceEntry.headers.get('Tracing.Headers.Event.Name')[0] }}</v-alert
+            >
           </v-timeline-item>
         </v-timeline>
       </div>

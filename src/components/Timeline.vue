@@ -18,11 +18,11 @@ const store = useJetStreamStore(),
     customRanges.value.length
       ? `${moment(customRanges.value[0][0]).format(dateFormat)} - ${moment(customRanges.value[0][1]).format(dateFormat)}`
       : store.timeRange,
-  watchers = [],
   selectedStream = ref(undefined),
   openDialog = ref(false)
 
-let animationFrameRequestId
+let animationFrameRequestId,
+  watchers = []
 
 onMounted(async () => {
   // output data when streams are changed
@@ -45,6 +45,7 @@ onBeforeUnmount(cleanup)
 function cleanup() {
   cancelAnimationFrame(animationFrameRequestId)
   watchers.forEach(unwatch => unwatch())
+  watchers = []
 }
 
 function outputData(forceRender) {
@@ -153,7 +154,7 @@ function outputData(forceRender) {
 
     tooltip
       .style('top', `${e.offsetY + 18}px`)
-      .style('left', `${e.offsetX + 28}px`)
+      .style('left', `${e.offsetX + 100 < width ? e.offsetX + 28 : e.offsetX - 100}px`)
       .style('opacity', e.offsetX > leftMargin ? '1' : '0')
       .html(tooltipText)
 
@@ -162,13 +163,13 @@ function outputData(forceRender) {
       return
     }
 
-    const width = e.offsetX - mouseDown.value
+    const rangeSelectorWidth = e.offsetX - mouseDown.value
 
     // user can drag mouse left or right
-    if (width > 0) {
-      rangeSelector.attr('x', mouseDown.value).attr('width', width)
+    if (rangeSelectorWidth > 0) {
+      rangeSelector.attr('x', mouseDown.value).attr('width', rangeSelectorWidth)
     } else {
-      rangeSelector.attr('x', mouseDown.value + width).attr('width', Math.abs(width))
+      rangeSelector.attr('x', mouseDown.value + rangeSelectorWidth).attr('width', Math.abs(rangeSelectorWidth))
     }
   })
 
@@ -237,6 +238,8 @@ function outputData(forceRender) {
   )
 
   watchers.push(watch(data, throttle(333, renderData, { noLeading: true })))
+
+  watchers.push(watch(() => store.selectedTimestamp, displayTimestampMarker))
 
   function renderData() {
     animationContainer
@@ -363,6 +366,31 @@ function outputData(forceRender) {
     streamsStatistics.forEach((value, key) => {
       d3.select(`text[data-stream="${key}"]`).text(`${key} (${value.length})`)
     })
+  }
+
+  function displayTimestampMarker(timestamp) {
+    if (timestamp === undefined) {
+      animationContainer.selectAll('.timestamp-marker').remove()
+      return
+    }
+
+    const x = xScale(millis(timestamp))
+
+    animationContainer
+      .selectAll('.timestamp-marker')
+      .data([timestamp])
+      .join(enter =>
+        enter
+          .append('line')
+          .attr('class', 'timestamp-marker')
+          .attr('x1', x)
+          .attr('x2', x)
+          .attr('y1', 0)
+          .attr('y2', height)
+          .attr('stroke', '#2196f3')
+          .attr('stroke-width', 1)
+          .attr('stroke-dasharray', '5,5')
+      )
   }
 }
 </script>

@@ -95,6 +95,7 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     loading,
     messages,
     selectedMessage: ref(undefined),
+    selectedTimestamp: ref(undefined),
     fetchMessageTrace
   }
 })

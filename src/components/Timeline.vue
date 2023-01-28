@@ -261,7 +261,7 @@ function outputData(forceRender) {
 
             return xCoordinate
           })
-          .attr('cy', d => yScale(d.stream) + 15)
+          .attr('cy', d => yScale(d.stream) + 5)
           .attr('r', messageRadius)
           .attr('fill', d => accent(d.stream))
           .attr('opacity', 1)

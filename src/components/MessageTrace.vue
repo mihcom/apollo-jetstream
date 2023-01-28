@@ -1,6 +1,4 @@
 ﻿<script setup>
-import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
-import 'vue3-perfect-scrollbar/dist/vue3-perfect-scrollbar.css'
 import { onMounted, ref, watch, computed } from 'vue'
 import { useJetStreamStore } from '../stores/JetStream.js'
 import moment from 'moment'
@@ -117,35 +115,39 @@ function formatDuration(duration) {
 <template>
   <div class="message-tracing">
     <div class="header">Message tracing</div>
-    <perfect-scrollbar v-if="services?.size">
-      <v-timeline side="end" v-for="service in services">
-        <div class="service-name">{{ service.values().next().value }}</div>
-        <v-timeline-item :key="store.selectedMessage.seq" icon="mdi-radio-tower" dot-color="#25a5be" line-inset="3">
-          <template v-slot:opposite>
-            {{ moment(millis(store.selectedMessage.info.timestampNanos)).format('HH:mm:ss.SSS') }}
-          </template>
-          <v-alert :value="true" color="#25a5be">Message published</v-alert>
-        </v-timeline-item>
-        <v-timeline-item
-          v-for="(traceEntry, index) in services.get(service.values().next().value)"
-          :key="traceEntry.seq"
-          :icon="getTraceIcon(traceEntry)"
-          :dot-color="getTraceColor(traceEntry)"
-          line-inset="3"
-        >
-          <template v-slot:opposite>
-            <div class="duration" :class="{ slow: getTraceDuration(traceEntry, trace.value[index - 1]) > 20 }">
-              +{{ formatDuration(getTraceDuration(traceEntry, trace.value[index - 1])) }}
-            </div>
-            {{ moment(millis(traceEntry.info.timestampNanos)).format('HH:mm:ss.SSS') }}
-          </template>
-          <v-alert :value="true" :color="getTraceColor(traceEntry)">{{
-            getTraceException(traceEntry) || traceEntry.headers.get('Tracing.Headers.Event.Name')[0]
-          }}</v-alert>
-        </v-timeline-item>
-      </v-timeline>
-    </perfect-scrollbar>
-    <div class="no-consumers" v-else>No consumers</div>
+    <div class="service-traces" v-if="services?.size">
+      <div class="service-trace" v-for="service in services">
+        <div class="service-name" :title="services.get(service.values().next().value)[0].headers.get('Tracing.Headers.Handler')[0]">
+          {{ service.values().next().value }}
+        </div>
+        <v-timeline side="end">
+          <v-timeline-item :key="store.selectedMessage.seq" icon="mdi-radio-tower" dot-color="#25a5be" line-inset="3">
+            <template v-slot:opposite>
+              {{ moment(millis(store.selectedMessage.info.timestampNanos)).format('HH:mm:ss.SSS') }}
+            </template>
+            <v-alert :value="true" color="#25a5be">Message published</v-alert>
+          </v-timeline-item>
+          <v-timeline-item
+            v-for="(traceEntry, index) in services.get(service.values().next().value)"
+            :key="traceEntry.seq"
+            :icon="getTraceIcon(traceEntry)"
+            :dot-color="getTraceColor(traceEntry)"
+            line-inset="3"
+          >
+            <template v-slot:opposite>
+              <div class="duration" :class="{ slow: getTraceDuration(traceEntry, trace.value[index - 1]) > 20 }">
+                +{{ formatDuration(getTraceDuration(traceEntry, trace.value[index - 1])) }}
+              </div>
+              {{ moment(millis(traceEntry.info.timestampNanos)).format('HH:mm:ss.SSS') }}
+            </template>
+            <v-alert :value="true" :color="getTraceColor(traceEntry)">{{
+              getTraceException(traceEntry) || traceEntry.headers.get('Tracing.Headers.Event.Name')[0]
+            }}</v-alert>
+          </v-timeline-item>
+        </v-timeline>
+      </div>
+    </div>
+    <div class="no-consumers" v-else>No tracing information available</div>
   </div>
 </template>
 
@@ -162,31 +164,32 @@ function formatDuration(duration) {
     display flex
     align-items center
     justify-content center
+    margin-bottom 1em
 
-  .ps
-    max-height 90%
-    margin-top 1em
-    margin-right 2em
+  .v-timeline
+    margin-left 1em
+
+  .service-traces
     display flex
+    overflow auto
 
-    .v-timeline
-      margin-top 5em
-      margin-left 1em
+    .service-trace
+      padding 0 1em
 
       .service-name
-        position absolute
-        top -5em
-        width 100%
         background-color cornflowerblue
         text-align center
         border-radius 1em
         padding 0.3em
 
-  .duration
-    text-align right
+      .duration
+        text-align right
 
-    &.slow
-      color red
+        &.slow
+          color red
+
+      .v-timeline--vertical.v-timeline
+        height auto
 
   .no-consumers
     display flex

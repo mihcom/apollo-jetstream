@@ -83,9 +83,11 @@ function outputData(forceRender) {
       .range(d3.schemeTableau10),
     g = svg.append('g').attr('transform', 'translate(' + leftMargin + ',' + 10 + ')')
 
-  let animationContainerStart = timeRange()[0]
+  let animationContainerStart = timeRange()[0],
+    pauseAnimation = false
 
   svg.on('mousedown', e => {
+    pauseAnimation = true
     mouseDown.value = e.offsetX
     rangeSelector.attr('x', e.offsetX).attr('width', 0)
   })
@@ -105,6 +107,7 @@ function outputData(forceRender) {
       domain = [Math.min(left, right), Math.max(left, right)]
 
     customRanges.value = [domain, ...customRanges.value]
+    pauseAnimation = false
   })
 
   svg.on('mousemove', e => {
@@ -295,7 +298,7 @@ function outputData(forceRender) {
     animationContainerStart = timeRange()[0]
 
     function animate(now) {
-      if (!lastAnimated || now - lastAnimated > 1000) {
+      if (!pauseAnimation && (!lastAnimated || now - lastAnimated > 1000)) {
         lastAnimated = now
         xScale.domain(timeRange())
         svg.select('.axis--x').transition().call(d3.axisBottom(xScale))

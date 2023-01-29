@@ -93,6 +93,8 @@ function outputData(forceRender) {
   })
 
   svg.on('mouseup', e => {
+    pauseAnimation = false
+
     const mousedownValue = mouseDown.value
 
     rangeSelector.attr('width', 0)
@@ -107,7 +109,6 @@ function outputData(forceRender) {
       domain = [Math.min(left, right), Math.max(left, right)]
 
     customRanges.value = [domain, ...customRanges.value]
-    pauseAnimation = false
   })
 
   svg.on('mousemove', e => {

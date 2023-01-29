@@ -64,7 +64,8 @@ function outputData(forceRender) {
       .append('svg')
       .attr('class', 'timeline')
       .attr('width', window.innerWidth)
-      .attr('height', window.innerHeight / 2),
+      .attr('height', window.innerHeight / 2)
+      .on('wheel', zoom),
     rangeSelector = d3.select('svg.timeline').append('rect').attr('class', 'range-selector').attr('x', 0).attr('y', 0).attr('width', 0).attr('height', height),
     tooltip = d3.select(svgContainer.value).append('div').attr('class', 'tooltip').style('opacity', 0),
     timeRange = () => [Date.now() - store.duration, Date.now()],
@@ -342,6 +343,26 @@ function outputData(forceRender) {
     animationContainer.selectAll('.message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
 
     updateStreamStatistics(true)
+  }
+
+  function zoom(e) {
+    if (e.deltaY > 0) {
+      // zoom out
+      customRanges.value.shift()
+      customRanges.value = [...customRanges.value]
+      return
+    }
+
+    const focusPointX = e.offsetX - leftMargin,
+      focusPointTime = xScale.invert(focusPointX).getTime(),
+      domain = xScale.domain().map(x => x.getTime()),
+      domainDuration = domain[1] - domain[0],
+      newDomainDuration = domainDuration / 3,
+      range = xScale.range(),
+      focusPointScaled = (focusPointX - range[0]) / (range[1] - range[0]),
+      newDomain = [focusPointTime - newDomainDuration * focusPointScaled, focusPointTime + newDomainDuration * (1 - focusPointScaled)]
+
+    customRanges.value = [newDomain, ...customRanges.value]
   }
 
   let lastStreamStatisticsSize = undefined,

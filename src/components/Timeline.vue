@@ -93,6 +93,8 @@ function outputData(forceRender) {
   })
 
   svg.on('mouseup', e => {
+    pauseAnimation = false
+
     const mousedownValue = mouseDown.value
 
     rangeSelector.attr('width', 0)

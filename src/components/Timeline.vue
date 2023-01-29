@@ -379,7 +379,11 @@ function outputData(forceRender) {
       return
     }
 
-    const x = xScale(millis(timestamp))
+    let x = xScale(millis(timestamp))
+
+    if (!customRanges.value.length) {
+      x -= xScale(animationContainerStart)
+    }
 
     animationContainer
       .selectAll('.timestamp-marker')

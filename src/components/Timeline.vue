@@ -109,6 +109,7 @@ function outputData(forceRender) {
       domain = [Math.min(left, right), Math.max(left, right)]
 
     customRanges.value = [domain, ...customRanges.value]
+    pauseAnimation = false
   })
 
   svg.on('mousemove', e => {

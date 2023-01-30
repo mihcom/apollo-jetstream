@@ -14,3 +14,4 @@ This web application that allows you to debug your JetStream applications.
 - `yarn build`
 - `yarn serve`
 - Open http://localhost:4173/apollo-jetstream/
+- Alternatively, you can run navigate to https://mihcom.github.io/apollo-jetstream/ which is the latest build

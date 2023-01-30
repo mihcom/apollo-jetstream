@@ -19,7 +19,7 @@ onmessage = event => {
   }
 }
 
-const serverUri = 'wss://localhost:444',
+const serverUri = 'ws://localhost:444',
   tracingStreamName = 'Tracing',
   connectionPromise = connect({ servers: serverUri })
 

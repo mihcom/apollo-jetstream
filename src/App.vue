@@ -7,11 +7,27 @@ import Timeline from './components/Timeline'
   <v-app theme="dark">
     <v-main>
       <Message />
-    </v-main>
-    <v-footer app>
       <Timeline />
-    </v-footer>
+    </v-main>
   </v-app>
 </template>
 
-<style scoped lang="stylus"></style>
+<style lang="stylus"></style>
+
+<style scoped lang="stylus">
+.v-main
+  display flex
+  flex-direction column
+  height 100vh
+  overflow hidden
+  background-color #1e1e1e
+
+  .message-container
+    //background-color cornflowerblue
+    height 50%
+
+  .timeline
+    border-top 1px solid #333333
+    //background-color darkgray
+    height 50%
+</style>

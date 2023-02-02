@@ -85,7 +85,7 @@ function getTraceColor(traceEntry) {
 function getTraceException(traceEntry) {
   const exceptionHeader = traceEntry.headers.get('Tracing.Headers.Exception')
 
-  return exceptionHeader ? exceptionHeader[0] : undefined
+  return exceptionHeader ? exceptionHeader[0].replace('<br/>', '\n') : undefined
 }
 
 function getTraceDuration(traceEntry, previousTraceEntry) {
@@ -164,8 +164,9 @@ function formatDuration(duration) {
                   :color="getTraceColor(traceEntry)"
                   @mouseenter="store.selectedTimestamp = traceEntry.info.timestampNanos"
                   @mouseleave="store.selectedTimestamp = undefined"
-                  >{{ getTraceException(traceEntry) || traceEntry.headers.get('Tracing.Headers.Event.Name')[0] }}</v-alert
                 >
+                  {{ getTraceException(traceEntry) || traceEntry.headers.get('Tracing.Headers.Event.Name')[0] }}
+                </v-alert>
               </v-timeline-item>
             </v-timeline>
           </div>
@@ -179,8 +180,9 @@ function formatDuration(duration) {
 <style scoped lang="stylus">
 .message-tracing
   background-color #1e1e1e
-  height 100%
   font-size 0.9em
+  display flex
+  flex-direction column
 
   .header
     height 33px
@@ -196,6 +198,7 @@ function formatDuration(duration) {
 
   .service-traces
     display flex
+    flex 1
     overflow auto
 
     .service-trace
@@ -207,6 +210,10 @@ function formatDuration(duration) {
 
         .service-handler
           margin 0 1em
+          max-width 40em
+
+          .v-timeline-item
+            overflow-wrap break-word
 
       .title
         text-align center

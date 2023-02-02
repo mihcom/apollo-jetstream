@@ -27,7 +27,7 @@ const store = useJetStreamStore()
     flex 1
 
   .message-tracing
-    min-width 33em
+    min-width 27em
 
   .no-message
     height 100%

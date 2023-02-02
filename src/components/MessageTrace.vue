@@ -14,7 +14,17 @@ onMounted(() => {
   watch(
     trace,
     () => {
-      services.value = groupToMap(trace.value.value, entry => entry.headers.get('Tracing.Headers.Event.Service')[0])
+      const mappedServices =
+        trace.value.value === undefined ? new Map() : groupToMap(trace.value.value, entry => entry.headers.get('Tracing.Headers.Event.Service')[0])
+
+      mappedServices.forEach((value, key) => {
+        mappedServices.set(
+          key,
+          groupToMap(value, entry => entry.headers.get('Tracing.Headers.Handler')[0])
+        )
+      })
+
+      services.value = mappedServices
     },
     { deep: true }
   )
@@ -116,45 +126,50 @@ function formatDuration(duration) {
   <div class="message-tracing">
     <div class="header">Message tracing</div>
     <div class="service-traces" v-if="services?.size">
-      <div class="service-trace" v-for="service in services">
-        <div class="service-name" :title="services.get(service.values().next().value)[0].headers.get('Tracing.Headers.Handler')[0]">
-          {{ service.values().next().value }}
+      <div class="service-trace" v-for="[service, serviceHandlers] in services">
+        <div class="service-name title">{{ service }}</div>
+        <div class="service-handlers">
+          <div class="service-handler" v-for="[serviceHandler, traceEntries] in serviceHandlers">
+            <div class="service-handler-name title" :title="serviceHandler">
+              {{ serviceHandler.split('.').slice(-1)[0] }}
+            </div>
+            <v-timeline side="end">
+              <v-timeline-item :key="store.selectedMessage.seq" icon="mdi-radio-tower" dot-color="#25a5be" line-inset="3">
+                <template v-slot:opposite>
+                  {{ moment(millis(store.selectedMessage.info.timestampNanos)).format('HH:mm:ss.SSS') }}
+                </template>
+                <v-alert
+                  :value="true"
+                  color="#25a5be"
+                  @mouseenter="store.selectedTimestamp = store.selectedMessage.info.timestampNanos"
+                  @mouseleave="store.selectedTimestamp = undefined"
+                  >Message published</v-alert
+                >
+              </v-timeline-item>
+              <v-timeline-item
+                v-for="(traceEntry, index) in traceEntries"
+                :key="traceEntry.seq"
+                :icon="getTraceIcon(traceEntry)"
+                :dot-color="getTraceColor(traceEntry)"
+                line-inset="3"
+              >
+                <template v-slot:opposite>
+                  <div class="duration" :class="{ slow: getTraceDuration(traceEntry, trace.value[index - 1]) > 20 }">
+                    +{{ formatDuration(getTraceDuration(traceEntry, trace.value[index - 1])) }}
+                  </div>
+                  {{ moment(millis(traceEntry.info.timestampNanos)).format('HH:mm:ss.SSS') }}
+                </template>
+                <v-alert
+                  :value="true"
+                  :color="getTraceColor(traceEntry)"
+                  @mouseenter="store.selectedTimestamp = traceEntry.info.timestampNanos"
+                  @mouseleave="store.selectedTimestamp = undefined"
+                  >{{ getTraceException(traceEntry) || traceEntry.headers.get('Tracing.Headers.Event.Name')[0] }}</v-alert
+                >
+              </v-timeline-item>
+            </v-timeline>
+          </div>
         </div>
-        <v-timeline side="end">
-          <v-timeline-item :key="store.selectedMessage.seq" icon="mdi-radio-tower" dot-color="#25a5be" line-inset="3">
-            <template v-slot:opposite>
-              {{ moment(millis(store.selectedMessage.info.timestampNanos)).format('HH:mm:ss.SSS') }}
-            </template>
-            <v-alert
-              :value="true"
-              color="#25a5be"
-              @mouseenter="store.selectedTimestamp = store.selectedMessage.info.timestampNanos"
-              @mouseleave="store.selectedTimestamp = undefined"
-              >Message published</v-alert
-            >
-          </v-timeline-item>
-          <v-timeline-item
-            v-for="(traceEntry, index) in services.get(service.values().next().value)"
-            :key="traceEntry.seq"
-            :icon="getTraceIcon(traceEntry)"
-            :dot-color="getTraceColor(traceEntry)"
-            line-inset="3"
-          >
-            <template v-slot:opposite>
-              <div class="duration" :class="{ slow: getTraceDuration(traceEntry, trace.value[index - 1]) > 20 }">
-                +{{ formatDuration(getTraceDuration(traceEntry, trace.value[index - 1])) }}
-              </div>
-              {{ moment(millis(traceEntry.info.timestampNanos)).format('HH:mm:ss.SSS') }}
-            </template>
-            <v-alert
-              :value="true"
-              :color="getTraceColor(traceEntry)"
-              @mouseenter="store.selectedTimestamp = traceEntry.info.timestampNanos"
-              @mouseleave="store.selectedTimestamp = undefined"
-              >{{ getTraceException(traceEntry) || traceEntry.headers.get('Tracing.Headers.Event.Name')[0] }}</v-alert
-            >
-          </v-timeline-item>
-        </v-timeline>
       </div>
     </div>
     <div class="no-consumers" v-else>No tracing information available</div>
@@ -186,11 +201,23 @@ function formatDuration(duration) {
     .service-trace
       padding 0 1em
 
-      .service-name
-        background-color cornflowerblue
+      .service-handlers
+        display flex
+        margin-top 1em
+
+        .service-handler
+          margin 0 1em
+
+      .title
         text-align center
         border-radius 1em
         padding 0.3em
+
+      .service-name
+        background-color cornflowerblue
+
+      .service-handler-name
+        background-color #68b6ef
 
       .duration
         text-align right
@@ -207,5 +234,5 @@ function formatDuration(duration) {
     width 100%
     justify-content center
     align-items center
-    font-size 2em
+    font-size 1.5em
 </style>

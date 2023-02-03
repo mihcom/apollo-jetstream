@@ -24,26 +24,27 @@ const serverUri = 'ws://localhost:444',
   tracingStreamName = 'Tracing'
 
 let connectionPromise
+;(async () => {
+  while (true) {
+    connectionPromise = connect({ servers: serverUri, maxReconnectAttempts: -1 })
 
-while (true) {
-  connectionPromise = connect({ servers: serverUri, maxReconnectAttempts: -1 })
+    try {
+      const nc = await connectionPromise
 
-  try {
-    const nc = await connectionPromise
+      postMessage({ type: 'natsConnectivityChanged', status: 'connected' })
+      ;(async () => {
+        for await (const s of nc.status()) {
+          postMessage({ type: 'natsConnectivityChanged', status: s.type })
+        }
+      })().then()
 
-    postMessage({ type: 'natsConnectivityChanged', status: 'connected' })
-    ;(async () => {
-      for await (const s of nc.status()) {
-        postMessage({ type: 'natsConnectivityChanged', status: s.type })
-      }
-    })().then()
-
-    break
-  } catch {
-    postMessage({ type: 'natsConnectivityChanged', status: 'connectionError', message: `Failed to connect to NATS server at ${serverUri}` })
-    await new Promise(resolve => setTimeout(resolve, 5000))
+      break
+    } catch {
+      postMessage({ type: 'natsConnectivityChanged', status: 'connectionError', message: `Failed to connect to NATS server at ${serverUri}` })
+      await new Promise(resolve => setTimeout(resolve, 5000))
+    }
   }
-}
+})().then()
 
 // noinspection JSIgnoredPromiseFromCall
 watchStreams()

@@ -275,7 +275,7 @@ function outputData(forceRender) {
 
               return xCoordinate
             })
-            .attr('cy', d => yScale(d.stream) + 7)
+            .attr('cy', d => yScale(d.stream) + 16)
             .attr('r', messageRadius)
             .attr('fill', d => accent(d.stream))
             .attr('data-stream', d => d.stream)
@@ -316,7 +316,7 @@ function outputData(forceRender) {
 
         const animationContainerStartScaled = xScale(animationContainerStart)
 
-        animationContainer.transition().attr('transform', `translate(${animationContainerStartScaled}, 10)`)
+        animationContainer.transition().attr('transform', `translate(${animationContainerStartScaled}, 0)`)
 
         for (let [x, elements] of messagesCoordinatesMap) {
           if (x + animationContainerStartScaled <= 10) {

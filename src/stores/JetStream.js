@@ -25,6 +25,8 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     worker = new NatsWorker(),
     toast = useToast()
 
+  let connectionErrorToastId
+
   worker.onmessage = event => {
     const { data } = event,
       cancelLoading = debounce(500, () => (loading.value = false)),
@@ -45,12 +47,38 @@ export const useJetStreamStore = defineStore('JetStream', () => {
         messagesTraceCache.get(data.message.messageId).value.push(data.message)
         break
 
+      case 'natsConnectivityChanged':
+        switch (data.status) {
+          case 'connectionError':
+            connectionErrorToastId = toast.error(data.message, { timeout: 0 })
+            break
+
+          case 'reconnecting':
+            toast.info('Restoring connection to NATS server', { timeout: 0 })
+            break
+
+          case 'connected':
+            if (connectionErrorToastId) {
+              toast.clear(connectionErrorToastId)
+              toast.success('Connected to NATS server')
+            }
+            break
+
+          case 'reconnect':
+            toast.clear()
+            toast.success('Connected to NATS server')
+            break
+        }
+
+        break
+
       default:
         throw `Unknown message type: ${data.type}`
     }
   }
 
   worker.onerror = error => {
+    error.preventDefault()
     toast.error(error.message, { timeout: 0 })
   }
 

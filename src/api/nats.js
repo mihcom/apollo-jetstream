@@ -21,8 +21,29 @@ onmessage = event => {
 }
 
 const serverUri = 'ws://localhost:444',
-  tracingStreamName = 'Tracing',
-  connectionPromise = connect({ servers: serverUri })
+  tracingStreamName = 'Tracing'
+
+let connectionPromise
+
+while (true) {
+  connectionPromise = connect({ servers: serverUri, maxReconnectAttempts: -1 })
+
+  try {
+    const nc = await connectionPromise
+
+    postMessage({ type: 'natsConnectivityChanged', status: 'connected' })
+    ;(async () => {
+      for await (const s of nc.status()) {
+        postMessage({ type: 'natsConnectivityChanged', status: s.type })
+      }
+    })().then()
+
+    break
+  } catch {
+    postMessage({ type: 'natsConnectivityChanged', status: 'connectionError', message: `Failed to connect to NATS server at ${serverUri}` })
+    await new Promise(resolve => setTimeout(resolve, 5000))
+  }
+}
 
 // noinspection JSIgnoredPromiseFromCall
 watchStreams()
@@ -31,6 +52,8 @@ let subscriptions = [],
   pullInterval
 
 async function getStreams(startTime) {
+  await connectionPromise
+
   clearInterval(pullInterval)
 
   for (const subscription of subscriptions) {
@@ -132,8 +155,6 @@ async function watchStreams() {
   ;(async () => {
     for await (const message of subscription) {
       const content = JSON.parse(new TextDecoder().decode(message.data))
-
-      console.log(content)
 
       if (content.action !== 'create' && content.action !== 'delete') {
         continue

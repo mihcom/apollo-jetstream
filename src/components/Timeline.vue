@@ -13,6 +13,7 @@ const store = useJetStreamStore(),
   svgContainer = ref(null),
   timeRanges = ['Live', 'Last 5 minutes', 'Last 15 minutes', 'Last 30 minutes', 'Last 1 hour', 'Last 2 hours', 'Last 4 hours', 'Last 8 hours', 'Last 24 hours'],
   customRanges = ref([]),
+  isLiveView = computed(() => store.timeRange === 'Live' && !customRanges.value.length),
   dateFormat = 'HH:mm:ss.SSS',
   rangeUi = () =>
     customRanges.value.length
@@ -188,7 +189,7 @@ function outputData(forceRender) {
   g.append('g')
     .attr('class', 'axis axis--x')
     .attr('transform', 'translate(0,' + height + ')')
-    .call(d3.axisBottom(xScale))
+    .call(d3.axisBottom(xScale).tickFormat(timeStamp => moment(timeStamp).format(dateFormat)))
 
   // add the y Axis (streams)
   g.append('g')
@@ -250,6 +251,10 @@ function outputData(forceRender) {
   watchers.push(watch(() => store.selectedTimestamp, displayTimestampMarker))
 
   function renderData() {
+    if (customRanges.value.length) {
+      return // do not render data if custom range is selected
+    }
+
     const visibleData = data.value.filter(d => xScale(millis(d.timestampNanos)) > 0)
 
     animationContainer
@@ -259,7 +264,15 @@ function outputData(forceRender) {
         enter =>
           enter
             .append('circle')
-            .attr('class', 'jetstream-message')
+            .attr('class', function (d) {
+              let result = 'jetstream-message'
+
+              if (d.message === store.selectedMessage) {
+                result += ' selected'
+              }
+
+              return result
+            })
             .attr('cx', function (d) {
               const xCoordinate = xScale(millis(d.timestampNanos)) - xScale(animationContainerStart),
                 cacheKey = Math.floor(xCoordinate)
@@ -280,9 +293,9 @@ function outputData(forceRender) {
             .attr('fill', d => accent(d.stream))
             .attr('data-stream', d => d.stream)
             .on('click', function (_, d) {
+              store.selectedMessage = d.message
               animationContainer.selectAll('.jetstream-message.selected').classed('selected', false)
               d3.select(this).classed('selected', true)
-              store.selectedMessage = d.message
             })
             .append('title')
             .text(d => `${d.subject} at ${moment(millis(d.timestampNanos)).format('HH:mm:ss.SSS')}`),
@@ -312,7 +325,10 @@ function outputData(forceRender) {
       if (!pauseAnimation && (!lastAnimated || now - lastAnimated > 1000)) {
         lastAnimated = now
         xScale.domain(timeRange())
-        svg.select('.axis--x').transition().call(d3.axisBottom(xScale))
+        svg
+          .select('.axis--x')
+          .transition()
+          .call(d3.axisBottom(xScale).tickFormat(timeStamp => moment(timeStamp).format(dateFormat)))
 
         const animationContainerStartScaled = xScale(animationContainerStart)
 
@@ -343,7 +359,9 @@ function outputData(forceRender) {
     const domain = customRanges.value.length ? customRanges.value[0] : timeRange()
 
     xScale.domain(domain)
-    d3.select('.axis--x').transition().call(d3.axisBottom(xScale))
+    d3.select('.axis--x')
+      .transition()
+      .call(d3.axisBottom(xScale).tickFormat(timeStamp => moment(timeStamp).format(dateFormat)))
 
     animationContainer.selectAll('.jetstream-message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
 

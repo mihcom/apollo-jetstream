@@ -46,7 +46,11 @@ function outputData() {
     const stringData = new TextDecoder().decode(message.data)
 
     if (stringData && stringData.length) {
-      viewModel.content = JSON.parse(new TextDecoder().decode(message.data))
+      try {
+        viewModel.content = JSON.parse(new TextDecoder().decode(message.data))
+      } catch {
+        viewModel.content = stringData
+      }
 
       if (viewModel.content.jwt) {
         viewModel.content.jwt = jwt_decode(viewModel.content.jwt)

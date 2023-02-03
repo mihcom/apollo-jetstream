@@ -85,7 +85,9 @@ function outputData(forceRender) {
     g = svg.append('g').attr('transform', 'translate(' + leftMargin + ',' + 10 + ')')
 
   let animationContainerStart = timeRange()[0],
-    pauseAnimation = false
+    pauseAnimation = false,
+    lastStreamStatisticsSize = undefined,
+    lastStreamStatisticsMin = undefined
 
   svg.on('mousedown', e => {
     pauseAnimation = true
@@ -248,41 +250,47 @@ function outputData(forceRender) {
   watchers.push(watch(() => store.selectedTimestamp, displayTimestampMarker))
 
   function renderData() {
+    const visibleData = data.value.filter(d => xScale(millis(d.timestampNanos)) > 0)
+
     animationContainer
-      .selectAll('.message')
-      .data(data.value, d => d.id)
-      .join(enter =>
-        enter
-          .append('circle')
-          .attr('class', 'jetstream-message')
-          .attr('cx', function (d) {
-            const xCoordinate = xScale(millis(d.timestampNanos)) - xScale(animationContainerStart),
-              cacheKey = Math.floor(xCoordinate)
+      .selectAll('.jetstream-message')
+      .data(visibleData, d => d.id)
+      .join(
+        enter =>
+          enter
+            .append('circle')
+            .attr('class', 'jetstream-message')
+            .attr('cx', function (d) {
+              const xCoordinate = xScale(millis(d.timestampNanos)) - xScale(animationContainerStart),
+                cacheKey = Math.floor(xCoordinate)
 
-            let cache = messagesCoordinatesMap.get(cacheKey)
+              let cache = messagesCoordinatesMap.get(cacheKey)
 
-            if (!cache) {
-              cache = []
-              messagesCoordinatesMap.set(cacheKey, cache)
-            }
+              if (!cache) {
+                cache = []
+                messagesCoordinatesMap.set(cacheKey, cache)
+              }
 
-            cache.push(this)
+              cache.push(this)
 
-            return xCoordinate
-          })
-          .attr('cy', d => yScale(d.stream) + 15)
-          .attr('r', messageRadius)
-          .attr('fill', d => accent(d.stream))
-          .attr('opacity', 1)
-          .attr('data-stream', d => d.stream)
-          .on('click', function (_, d) {
-            animationContainer.selectAll('.jetstream-message.selected').classed('selected', false)
-            d3.select(this).classed('selected', true)
-            store.selectedMessage = d.message
-          })
-          .append('title')
-          .text(d => `${d.subject} at ${moment(millis(d.timestampNanos)).format('HH:mm:ss.SSS')}`)
+              return xCoordinate
+            })
+            .attr('cy', d => yScale(d.stream) + 7)
+            .attr('r', messageRadius)
+            .attr('fill', d => accent(d.stream))
+            .attr('data-stream', d => d.stream)
+            .on('click', function (_, d) {
+              animationContainer.selectAll('.jetstream-message.selected').classed('selected', false)
+              d3.select(this).classed('selected', true)
+              store.selectedMessage = d.message
+            })
+            .append('title')
+            .text(d => `${d.subject} at ${moment(millis(d.timestampNanos)).format('HH:mm:ss.SSS')}`),
+        update => update,
+        exit => exit.remove()
       )
+
+    updateStreamStatistics()
   }
 
   function manageLiveEvents() {
@@ -309,7 +317,6 @@ function outputData(forceRender) {
         const animationContainerStartScaled = xScale(animationContainerStart)
 
         animationContainer.transition().attr('transform', `translate(${animationContainerStartScaled}, 10)`)
-        animationContainer.selectAll('.jetstream-message.out').remove()
 
         for (let [x, elements] of messagesCoordinatesMap) {
           if (x + animationContainerStartScaled <= 10) {
@@ -320,8 +327,6 @@ function outputData(forceRender) {
             messagesCoordinatesMap.delete(x)
           }
         }
-
-        updateStreamStatistics()
       }
 
       animationFrameRequestId = requestAnimationFrame(animate)
@@ -365,9 +370,6 @@ function outputData(forceRender) {
     customRanges.value = [newDomain, ...customRanges.value]
   }
 
-  let lastStreamStatisticsSize = undefined,
-    lastStreamStatisticsMin = undefined
-
   function updateStreamStatistics(force) {
     const statisticsSize = messagesCoordinatesMap.size,
       statisticsMin = messagesCoordinatesMap.keys().next().value
@@ -379,7 +381,7 @@ function outputData(forceRender) {
     lastStreamStatisticsSize = statisticsSize
     lastStreamStatisticsMin = statisticsMin
 
-    const messages = animationContainer.selectAll('.jetstream-message').filter(d => {
+    const messages = animationContainer.selectAll('.jetstream-message:not(.out)').filter(d => {
         const x = xScale(millis(d.timestampNanos))
         return x >= 0 && x <= width
       }),

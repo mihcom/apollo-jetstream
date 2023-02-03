@@ -47,8 +47,12 @@ function fetchMessageTrace() {
     return
   }
 
-  const messageContent = JSON.parse(new TextDecoder().decode(message.data))
-  trace.value = store.fetchMessageTrace(messageContent.messageId)
+  try {
+    const messageContent = JSON.parse(new TextDecoder().decode(message.data))
+    trace.value = store.fetchMessageTrace(messageContent.messageId)
+  } catch {
+    trace.value = []
+  }
 }
 
 function getTraceIcon(traceEntry) {

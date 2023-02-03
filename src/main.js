@@ -13,7 +13,15 @@ loadFonts()
 const toastOptions = {
   position: 'top-right',
   timeout: 5000,
-  closeOnClick: true
+  closeOnClick: true,
+  filterBeforeCreate: (toast, toasts) => {
+    // prevent toast duplicates
+    if (toasts.filter(t => t.type === toast.type).length !== 0) {
+      return false
+    }
+
+    return toast
+  }
 }
 
 window.onerror = function (message) {

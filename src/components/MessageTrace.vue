@@ -1,5 +1,5 @@
 ﻿<script setup>
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useJetStreamStore } from '../stores/JetStream.js'
 import moment from 'moment'
 import { millis } from 'nats.ws'

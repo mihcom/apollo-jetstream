@@ -1827,9 +1827,9 @@ robust-predicates@^3.0.0:
   integrity sha512-ndEIpszUHiG4HtDsQLeIuMvRsDnn8c8rYStabochtUeCvfuvNptb5TUbVD68LRAILPX7p9nqQGh4xJgn3EHS/g==
 
 rollup@^3.10.0:
-  version "3.12.1"
-  resolved "https://registry.yarnpkg.com/rollup/-/rollup-3.12.1.tgz#2975b97713e4af98c15e7024b88292d7fddb3853"
-  integrity sha512-t9elERrz2i4UU9z7AwISj3CQcXP39cWxgRWLdf4Tm6aKm1eYrqHIgjzXBgb67GNY1sZckTFFi0oMozh3/S++Ig==
+  version "3.13.0"
+  resolved "https://registry.yarnpkg.com/rollup/-/rollup-3.13.0.tgz#202883a91b5d1bf98302efe4daa907e3e5e4ae94"
+  integrity sha512-HJwQtrXAc0AmyDohTJ/2c+Bx/sWPScJLlAUJ1kuD7rAkCro8Cr2SnVB2gVYBiSLxpgD2kZ24jbyXtG++GumrYQ==
   optionalDependencies:
     fsevents "~2.3.2"
 
@@ -2126,9 +2126,9 @@ uuid@^9.0.0:
   integrity sha512-MXcSTerfPa4uqyzStbRoTgt5XIe3x5+42+q1sDuy3R5MDk66URdLMOZe5aPX/SQd+kuYAh0FdP/pO28IkQyTeg==
 
 vanilla-jsoneditor@^0.14.0:
-  version "0.14.3"
-  resolved "https://registry.yarnpkg.com/vanilla-jsoneditor/-/vanilla-jsoneditor-0.14.3.tgz#e9856205309935c0ec3963fd164c4f0d832dbc15"
-  integrity sha512-uQ69OSoi4TjD0uHa6aT/JV/yUwHElSjECGVjOtBD3bJxN4zqN+gy8fx9soHRH644jPatT/yvQy6sL4xshGZjVg==
+  version "0.14.4"
+  resolved "https://registry.yarnpkg.com/vanilla-jsoneditor/-/vanilla-jsoneditor-0.14.4.tgz#7dcd2942a4a184058cf6875fe938002256d51ca8"
+  integrity sha512-4YeIkrfCxhSmgOYpFPyGIMEX6yxAN3oj4Dz1v+lTan5NH/5k9YjulWUX9JVphiEWFqoMIwtOs038FOXn6n19jA==
 
 vite-plugin-vuetify@^1.0.0-alpha.12:
   version "1.0.2"

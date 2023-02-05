@@ -41,6 +41,9 @@ onMounted(async () => {
   hotkeys('alt+right', () => scrollTimeline('right'))
   hotkeys('alt+left', () => scrollTimeline('left'))
 
+  hotkeys('ctrl+right', () => selectMessage('next'))
+  hotkeys('ctrl+left', () => selectMessage('previous'))
+
   // output data on load
   outputData()
 })
@@ -255,6 +258,23 @@ function outputData(forceRender) {
 
   watchers.push(watch(() => store.selectedTimestamp, displayTimestampMarker))
 
+  watchers.push(
+    watch(
+      () => store.selectedMessage,
+      () => {
+        animationContainer.selectAll('.jetstream-message').attr('class', function (d) {
+          let result = 'jetstream-message'
+
+          if (d.message === store.selectedMessage) {
+            result += ' selected'
+          }
+
+          return result
+        })
+      }
+    )
+  )
+
   function renderData() {
     if (customRanges.value.length) {
       return // do not render data if custom range is selected
@@ -299,8 +319,6 @@ function outputData(forceRender) {
             .attr('data-stream', d => d.stream)
             .on('click', function (_, d) {
               store.selectedMessage = d.message
-              animationContainer.selectAll('.jetstream-message.selected').classed('selected', false)
-              d3.select(this).classed('selected', true)
             })
             .append('title')
             .text(d => `${d.subject} at ${moment(millis(d.timestampNanos)).format('HH:mm:ss.SSS')}`),
@@ -464,6 +482,21 @@ function scrollTimeline(direction) {
     ]
 
   customRanges.value = [newDomain, ...customRanges.value.slice(1)]
+}
+
+function selectMessage(direction) {
+  if (!store.selectedMessage) {
+    return
+  }
+
+  const messageSeq = store.selectedMessage.seq + (direction === 'next' ? 1 : -1),
+    message = store.messages.find(x => x.stream.config.name === store.selectedMessage.stream.config.name && x.seq === messageSeq)
+
+  if (!message) {
+    return
+  }
+
+  store.selectedMessage = message
 }
 </script>
 

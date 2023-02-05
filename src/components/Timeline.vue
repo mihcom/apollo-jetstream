@@ -13,7 +13,6 @@ const store = useJetStreamStore(),
   svgContainer = ref(null),
   timeRanges = ['Live', 'Last 5 minutes', 'Last 15 minutes', 'Last 30 minutes', 'Last 1 hour', 'Last 2 hours', 'Last 4 hours', 'Last 8 hours', 'Last 24 hours'],
   customRanges = ref([]),
-  isLiveView = computed(() => store.timeRange === 'Live' && !customRanges.value.length),
   dateFormat = 'HH:mm:ss.SSS',
   rangeUi = () =>
     customRanges.value.length
@@ -23,7 +22,9 @@ const store = useJetStreamStore(),
   openDialog = ref(false)
 
 let animationFrameRequestId,
-  watchers = []
+  watchers = [],
+  pauseAnimation = false,
+  xScale
 
 onMounted(async () => {
   // output data when streams are changed
@@ -37,6 +38,9 @@ onMounted(async () => {
     customRanges.value = [...customRanges.value]
   })
 
+  hotkeys('alt+right', () => scrollTimeline('right'))
+  hotkeys('alt+left', () => scrollTimeline('left'))
+
   // output data on load
   outputData()
 })
@@ -45,6 +49,7 @@ onBeforeUnmount(cleanup)
 
 function cleanup() {
   cancelAnimationFrame(animationFrameRequestId)
+
   watchers.forEach(unwatch => unwatch())
   watchers = []
 }
@@ -71,10 +76,6 @@ function outputData(forceRender) {
     tooltip = d3.select(svgContainer.value).append('div').attr('class', 'tooltip').style('opacity', 0),
     timeRange = () => [Date.now() - store.duration, Date.now()],
     mouseDown = ref(undefined),
-    xScale = d3
-      .scaleTime()
-      .domain(timeRange())
-      .range([0, width - leftMargin]),
     yScale = d3
       .scaleBand()
       .domain(streams.map(x => x.config.name))
@@ -85,8 +86,12 @@ function outputData(forceRender) {
       .range(d3.schemeTableau10),
     g = svg.append('g').attr('transform', 'translate(' + leftMargin + ',' + 10 + ')')
 
+  xScale = d3
+    .scaleTime()
+    .domain(timeRange())
+    .range([0, width - leftMargin])
+
   let animationContainerStart = timeRange()[0],
-    pauseAnimation = false,
     lastStreamStatisticsSize = undefined,
     lastStreamStatisticsMin = undefined
 
@@ -365,6 +370,10 @@ function outputData(forceRender) {
 
     animationContainer.selectAll('.jetstream-message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
 
+    if (!customRanges.value.length) {
+      outputData(true) // force render when custom range is removed
+    }
+
     updateStreamStatistics(true)
   }
 
@@ -442,6 +451,19 @@ function outputData(forceRender) {
           .attr('stroke-dasharray', '5,5')
       )
   }
+}
+
+function scrollTimeline(direction) {
+  const scrollPercentage = 0.2,
+    domainDirectionMultiplier = direction === 'right' ? 1 : -1,
+    domain = xScale.domain().map(x => x.getTime()),
+    domainDuration = domain[1] - domain[0],
+    newDomain = [
+      domain[0] + domainDuration * scrollPercentage * domainDirectionMultiplier,
+      domain[1] + domainDuration * scrollPercentage * domainDirectionMultiplier
+    ]
+
+  customRanges.value = [newDomain, ...customRanges.value.slice(1)]
 }
 </script>
 

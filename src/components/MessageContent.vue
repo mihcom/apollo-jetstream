@@ -17,12 +17,18 @@ onMounted(() => {
 })
 
 function outputData() {
-  const message = unref(store.selectedMessage),
-    viewModel = {
-      published: moment(millis(message.info.timestampNanos)).format('DD MMM HH:mm:ss.SSS'),
-      stream: message.info.stream,
-      subject: message.subject
-    }
+  const message = unref(store.selectedMessage)
+
+  if (!message) {
+    viewModelBinding.value = undefined
+    return
+  }
+
+  const viewModel = {
+    published: moment(millis(message.info.timestampNanos)).format('DD MMM HH:mm:ss.SSS'),
+    stream: message.info.stream,
+    subject: message.subject
+  }
 
   if (message.headers) {
     const headers = {}

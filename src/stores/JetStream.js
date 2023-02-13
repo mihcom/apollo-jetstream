@@ -22,6 +22,9 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     startTime = computed(() => moment().subtract(duration.value).valueOf()),
     streams = ref([]),
     messages = ref([]),
+    mappedMessages = new Map(),
+    selectedMessage = ref(undefined),
+    failures = ref([]),
     worker = new NatsWorker(),
     toast = useToast()
 
@@ -41,10 +44,30 @@ export const useJetStreamStore = defineStore('JetStream', () => {
         messages.value.push(data.message)
         cancelLoading()
         clearTimeout(cancelLoadingOnTimeout)
+
+        const messageIdHeader = data.message.headers?.get('Tracing.Headers.Event.MessageId')
+
+        if (messageIdHeader === undefined) {
+          return
+        }
+
+        let mapped = mappedMessages.get(data.message.info.stream)
+
+        if (mapped === undefined) {
+          mapped = new Map()
+          mappedMessages.set(data.message.info.stream, mapped)
+        }
+
+        mapped.set(messageIdHeader[0], data.message)
+
         break
 
       case 'messageTrace':
         messagesTraceCache.get(data.message.messageId).value.push(data.message)
+        break
+
+      case 'messageFailure':
+        failures.value.push(data.message)
         break
 
       case 'natsConnectivityChanged':
@@ -84,12 +107,20 @@ export const useJetStreamStore = defineStore('JetStream', () => {
 
   watch(timeRange, () => fetchStreams())
 
-  async function fetchStreams() {
+  function fetchStreams() {
     loading.value = true
+    selectedMessage.value = undefined
     messages.value = []
 
     worker.postMessage({
       type: 'getStreams',
+      startTime: moment(startTime.value).toISOString()
+    })
+  }
+
+  function listenForFailures() {
+    worker.postMessage({
+      type: 'listenForFailures',
       startTime: moment(startTime.value).toISOString()
     })
   }
@@ -113,7 +144,12 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     return messageTrace
   }
 
+  function selectMessage(stream, messageId) {
+    selectedMessage.value = mappedMessages.get(stream).get(messageId)
+  }
+
   fetchStreams()
+  listenForFailures()
 
   return {
     timeRange,
@@ -122,8 +158,10 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     streams,
     loading,
     messages,
-    selectedMessage: ref(undefined),
+    selectedMessage,
     selectedTimestamp: ref(undefined),
-    fetchMessageTrace
+    failures,
+    fetchMessageTrace,
+    selectMessage
   }
 })

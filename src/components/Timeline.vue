@@ -221,7 +221,7 @@ function outputData(forceRender) {
       stream: x.stream.config.name,
       subject: x.subject,
       data: x.data,
-      id: x.reply,
+      id: `${x.stream.config.name}_${x.seq}`,
       timestampNanos: x.info.timestampNanos,
       message: x
     }),
@@ -230,9 +230,7 @@ function outputData(forceRender) {
 
   manageLiveEvents()
 
-  if (forceRender) {
-    renderData()
-  }
+  renderData(forceRender)
 
   watchers.push(
     watch(
@@ -258,6 +256,9 @@ function outputData(forceRender) {
 
   watchers.push(watch(() => store.selectedTimestamp, displayTimestampMarker))
 
+  watchers.push(watch(store.failures, displayFailures))
+  displayFailures(store.failures)
+
   watchers.push(
     watch(
       () => store.selectedMessage,
@@ -275,8 +276,8 @@ function outputData(forceRender) {
     )
   )
 
-  function renderData() {
-    if (customRanges.value.length) {
+  function renderData(forceRender) {
+    if (!forceRender && customRanges.value.length) {
       return // do not render data if custom range is selected
     }
 
@@ -388,6 +389,13 @@ function outputData(forceRender) {
 
     animationContainer.selectAll('.jetstream-message').call(d => d.transition().attr('cx', d => xScale(millis(d.timestampNanos))))
 
+    animationContainer.selectAll('.failure').call(d =>
+      d
+        .transition()
+        .attr('x1', d => xScale(millis(d.info.timestampNanos)))
+        .attr('x2', d => xScale(millis(d.info.timestampNanos)))
+    )
+
     if (!customRanges.value.length) {
       outputData(true) // force render when custom range is removed
     }
@@ -467,6 +475,37 @@ function outputData(forceRender) {
           .attr('stroke', '#2196f3')
           .attr('stroke-width', 1)
           .attr('stroke-dasharray', '5,5')
+      )
+  }
+
+  function displayFailures(failures) {
+    function x(d) {
+      let x = xScale(millis(d.info.timestampNanos))
+
+      if (!customRanges.value.length) {
+        x -= xScale(animationContainerStart)
+      }
+
+      return x
+    }
+
+    animationContainer
+      .selectAll('.failure')
+      .data(failures, x => `${x.info.stream}_${x.seq}`)
+      .join(enter =>
+        enter
+          .append('line')
+          .attr('class', 'failure')
+          .attr('x1', x)
+          .attr('x2', x)
+          .attr('y1', 0)
+          .attr('y2', height)
+          .on('click', function (_, d) {
+            const stream = d.headers.get('Tracing.Headers.Stream')[0],
+              messageId = d.messageId
+
+            store.selectMessage(stream, messageId)
+          })
       )
   }
 }
@@ -657,4 +696,10 @@ svg text::selection
   transition opacity 0.5s
   pointer-events none
   z-index 100
+
+.failure
+  stroke red
+  stroke-width 10px
+  cursor pointer
+  opacity: 0.3
 </style>

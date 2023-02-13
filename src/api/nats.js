@@ -15,6 +15,11 @@ onmessage = event => {
       fetchMessageTrace(event.data.messageId)
       break
 
+    case 'listenForFailures':
+      // noinspection JSIgnoredPromiseFromCall
+      listenForFailures(event.data.startTime)
+      break
+
     default:
       throw `Unknown message type: ${type}`
   }
@@ -66,7 +71,7 @@ async function getStreams(startTime) {
   const natsConnection = await getNatsConnection(),
     jetStreamManager = await natsConnection.jetstreamManager()
 
-  const streams = (await jetStreamManager.streams.list().next()).filter(x => x.config.name !== tracingStreamName)
+  const streams = await jetStreamManager.streams.list().next() //.filter(x => x.config.name !== tracingStreamName)
 
   postMessage({
     type: 'streams',
@@ -111,7 +116,7 @@ async function fetchMessageTrace(messageId) {
   await createConsumer({
     jetStreamClient,
     streamName: tracingStreamName,
-    subject: `Tracing.${messageId}`,
+    subject: `Tracing.${messageId}.*`,
     onMessage: message => {
       const entry = {
         messageId,
@@ -177,6 +182,33 @@ async function watchStreams() {
       }
     }
   })()
+}
+
+async function listenForFailures(startTime) {
+  const natsConnection = await getNatsConnection(),
+    jetStreamClient = natsConnection.jetstream()
+
+  await createConsumer({
+    jetStreamClient,
+    streamName: tracingStreamName,
+    subject: `Tracing.*.Failure`,
+    consumerConfigurationOverride: {
+      deliver_policy: DeliverPolicy.StartTime, // we want to start at a specific time
+      opt_start_time: startTime
+    },
+    onMessage: message => {
+      const messageId = message.subject.match(/^Tracing\.(.*)\.Failure$/)[1],
+        entry = {
+          messageId,
+          info: message.info,
+          data: message.data,
+          headers: message.headers?.headers,
+          seq: message.seq
+        }
+
+      postMessage({ type: 'messageFailure', message: entry })
+    }
+  })
 }
 
 async function getNatsConnection() {

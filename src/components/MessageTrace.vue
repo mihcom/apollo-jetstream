@@ -35,7 +35,7 @@ onMounted(() => {
 function fetchMessageTrace() {
   const message = store.selectedMessage
 
-  if (!message.data) {
+  if (!message?.data) {
     trace.value = []
     return
   }

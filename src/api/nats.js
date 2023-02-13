@@ -71,7 +71,7 @@ async function getStreams(startTime) {
   const natsConnection = await getNatsConnection(),
     jetStreamManager = await natsConnection.jetstreamManager()
 
-  const streams = (await jetStreamManager.streams.list().next()).filter(x => x.config.name !== tracingStreamName)
+  const streams = await jetStreamManager.streams.list().next() //.filter(x => x.config.name !== tracingStreamName)
 
   postMessage({
     type: 'streams',

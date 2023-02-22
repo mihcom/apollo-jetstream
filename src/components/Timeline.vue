@@ -38,8 +38,8 @@ onMounted(async () => {
     customRanges.value = [...customRanges.value]
   })
 
-  hotkeys('alt+right', () => scrollTimeline('right'))
-  hotkeys('alt+left', () => scrollTimeline('left'))
+  hotkeys('shift+right', () => scrollTimeline('right'))
+  hotkeys('shift+left', () => scrollTimeline('left'))
 
   hotkeys('ctrl+right', () => selectMessage('next'))
   hotkeys('ctrl+left', () => selectMessage('previous'))

@@ -2,15 +2,22 @@
 import Message from './components/Message'
 import Timeline from './components/Timeline'
 import Help from './components/Help'
+import Configuration from './components/Configuration'
 import { onMounted, ref } from 'vue'
 import hotkeys from 'hotkeys-js'
 
-const showHelp = ref(false)
+const showHelp = ref(false),
+  showConfiguration = ref(false)
 
 onMounted(() => {
   hotkeys('f1', e => {
     e.preventDefault()
     showHelp.value = !showHelp.value
+  })
+
+  hotkeys('f2', e => {
+    e.preventDefault()
+    showConfiguration.value = !showConfiguration.value
   })
 })
 </script>
@@ -23,6 +30,7 @@ onMounted(() => {
       <Message />
       <Timeline />
       <Help :visible="showHelp" @close="showHelp = false" />
+      <Configuration :visible="showConfiguration" @close="showConfiguration = false" />
     </v-main>
   </v-app>
 </template>

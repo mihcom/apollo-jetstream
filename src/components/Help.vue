@@ -1,11 +1,11 @@
 ﻿<script setup>
-import { ref, toRefs } from 'vue'
+import { toRefs } from 'vue'
 
 const props = defineProps({
     visible: {
       type: Boolean,
       required: true,
-      default: true
+      default: false
     }
   }),
   { visible } = toRefs(props)
@@ -15,7 +15,7 @@ const props = defineProps({
   <v-dialog v-model="visible" max-width="65em" class="help-content" @update:model-value="$emit('close')">
     <v-card>
       <v-toolbar color="primary" dense>
-        <v-toolbar-title>Apollo JetStream Help </v-toolbar-title>
+        <v-toolbar-title>Apollo JetStream Help</v-toolbar-title>
       </v-toolbar>
       <v-card-text>
         <h3>Keyboard shortcuts</h3>

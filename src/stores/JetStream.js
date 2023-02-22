@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import { debounce } from 'throttle-debounce'
 import NatsWorker from '../api/nats?worker&inline'
+import { useStorage } from '@vueuse/core'
 
 export const useJetStreamStore = defineStore('JetStream', () => {
   const timeRange = ref('Live'),
@@ -26,9 +27,18 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     selectedMessage = ref(undefined),
     failures = ref([]),
     worker = new NatsWorker(),
-    toast = useToast()
+    toast = useToast(),
+    NATS_SERVER_ADDRESS_KEY = 'NATS_SERVER_ADDRESS',
+    natsServerAddress = useStorage(NATS_SERVER_ADDRESS_KEY, 'localhost:444')
+
+  watch(natsServerAddress, () => location.reload())
 
   let connectionErrorToastId
+
+  worker.postMessage({
+    type: 'setNatsServerAddress',
+    natsServerAddress: `ws://${natsServerAddress.value}`
+  })
 
   worker.onmessage = event => {
     const { data } = event,
@@ -162,6 +172,7 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     selectedTimestamp: ref(undefined),
     failures,
     fetchMessageTrace,
-    selectMessage
+    selectMessage,
+    natsServerAddress
   }
 })

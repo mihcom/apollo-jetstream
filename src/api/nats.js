@@ -1,10 +1,42 @@
 import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
 import moment from 'moment/moment.js'
 
+const tracingStreamName = 'Tracing'
+let natsServerAddress, connectionPromise
+
 onmessage = event => {
   const { type } = event.data
 
   switch (type) {
+    case 'setNatsServerAddress':
+      natsServerAddress = event.data.natsServerAddress
+      ;(async () => {
+        while (true) {
+          connectionPromise = connect({ servers: natsServerAddress, maxReconnectAttempts: -1 })
+
+          try {
+            const nc = await connectionPromise
+
+            postMessage({ type: 'natsConnectivityChanged', status: 'connected' })
+            ;(async () => {
+              for await (const s of nc.status()) {
+                postMessage({ type: 'natsConnectivityChanged', status: s.type })
+              }
+            })().then()
+
+            // noinspection JSIgnoredPromiseFromCall
+            watchStreams()
+
+            break
+          } catch {
+            postMessage({ type: 'natsConnectivityChanged', status: 'connectionError', message: `Failed to connect to NATS server at ${natsServerAddress}` })
+            await new Promise(resolve => setTimeout(resolve, 5000))
+          }
+        }
+      })().then()
+
+      break
+
     case 'getStreams':
       // noinspection JSIgnoredPromiseFromCall
       getStreams(event.data.startTime)
@@ -24,35 +56,6 @@ onmessage = event => {
       throw `Unknown message type: ${type}`
   }
 }
-
-const serverUri = 'ws://localhost:444',
-  tracingStreamName = 'Tracing'
-
-let connectionPromise
-;(async () => {
-  while (true) {
-    connectionPromise = connect({ servers: serverUri, maxReconnectAttempts: -1 })
-
-    try {
-      const nc = await connectionPromise
-
-      postMessage({ type: 'natsConnectivityChanged', status: 'connected' })
-      ;(async () => {
-        for await (const s of nc.status()) {
-          postMessage({ type: 'natsConnectivityChanged', status: s.type })
-        }
-      })().then()
-
-      break
-    } catch {
-      postMessage({ type: 'natsConnectivityChanged', status: 'connectionError', message: `Failed to connect to NATS server at ${serverUri}` })
-      await new Promise(resolve => setTimeout(resolve, 5000))
-    }
-  }
-})().then()
-
-// noinspection JSIgnoredPromiseFromCall
-watchStreams()
 
 let subscriptions = [],
   pullInterval
@@ -215,6 +218,6 @@ async function getNatsConnection() {
   try {
     return await connectionPromise
   } catch (e) {
-    throw `Failed to connect to NATS server at ${serverUri}`
+    throw `Failed to connect to NATS server at ${natsServerAddress}`
   }
 }

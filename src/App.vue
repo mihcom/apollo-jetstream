@@ -31,8 +31,8 @@ onMounted(() => {
               <li><span class="hint">F1</span> - show this help</li>
               <li><span class="hint">Ctrl+Right</span> - select next message in stream</li>
               <li><span class="hint">Ctrl+Left</span> - select previous message in stream</li>
-              <li><span class="hint">Alt+Right</span> - scroll timeline to the right</li>
-              <li><span class="hint">Alt+Left</span> - scroll timeline to the left</li>
+              <li><span class="hint">Shift+Right</span> - scroll timeline to the right</li>
+              <li><span class="hint">Shift+Left</span> - scroll timeline to the left</li>
             </ul>
             <h3>Actions</h3>
             <ul>

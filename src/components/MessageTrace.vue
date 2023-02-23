@@ -97,16 +97,20 @@ function getTraceDuration(traceEntry, previousTraceEntry) {
     previousTraceEntry = store.selectedMessage
   }
 
-  const messageTimestamp = millis(traceEntry.info.timestampNanos),
-    previousMessageTimestamp = millis(previousTraceEntry.info.timestampNanos)
+  const messageTimestamp = traceEntry.info.timestampNanos,
+    previousMessageTimestamp = previousTraceEntry.info.timestampNanos
 
-  return messageTimestamp - previousMessageTimestamp
+  if (traceEntry.headers.get('Tracing.Headers.Event.Service')[0] === 'RunLog') {
+    console.log(traceEntry, previousTraceEntry, millis(messageTimestamp - previousMessageTimestamp))
+  }
+
+  return millis(messageTimestamp - previousMessageTimestamp)
 }
 
 function formatDuration(duration) {
-  if (duration < 1000) {
-    return `${duration}ms`
-  }
+  //if (duration < 1000) {
+  return `${duration}ms`
+  //}
 
   const momentDuration = moment.duration(duration, 'milliseconds')
 
@@ -158,8 +162,8 @@ function formatDuration(duration) {
                 line-inset="3"
               >
                 <template v-slot:opposite>
-                  <div class="duration" :class="{ slow: getTraceDuration(traceEntry, trace.value[index - 1]) > 20 }">
-                    +{{ formatDuration(getTraceDuration(traceEntry, trace.value[index - 1])) }}
+                  <div class="duration" :class="{ slow: getTraceDuration(traceEntry, traceEntries[index - 1]) > 20 }">
+                    +{{ formatDuration(getTraceDuration(traceEntry, traceEntries[index - 1])) }}
                   </div>
                   {{ moment(millis(traceEntry.info.timestampNanos)).format('HH:mm:ss.SSS') }}
                 </template>

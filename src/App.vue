@@ -26,7 +26,7 @@ onMounted(() => {
   <v-app theme="dark">
     <v-main>
       <v-icon class="help cta" title="Show help (F1)" @click="showHelp = true">mdi-help-box</v-icon>
-      <v-icon class="configuration cta" title="Configuration (F2)">mdi-cog</v-icon>
+      <v-icon class="configuration cta" title="Configuration (F2)" @click="showConfiguration = true">mdi-cog</v-icon>
       <Message />
       <Timeline />
       <Help :visible="showHelp" @close="showHelp = false" />

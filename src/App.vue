@@ -23,7 +23,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <v-app theme="dark">
+  <v-app>
     <v-main>
       <v-icon class="help cta" title="Show help (F1)" @click="showHelp = true">mdi-help-box</v-icon>
       <v-icon class="configuration cta" title="Configuration (F2)" @click="showConfiguration = true">mdi-cog</v-icon>
@@ -69,7 +69,7 @@ onMounted(() => {
   .cta
     cursor pointer
     transition all 0.2s ease-in-out
-    color rgb(187,134,252)
+    color white
 
     &:hover
       transform scale(1.2)

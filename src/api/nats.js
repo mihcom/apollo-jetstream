@@ -175,6 +175,10 @@ async function watchStreams() {
         streams = (await jetStreamManager.streams.list().next()).filter(x => x.config.name !== tracingStreamName),
         stream = streams.find(x => x.config.name === streamName)
 
+      if (!stream) {
+        continue
+      }
+
       postMessage({
         type: 'streams',
         streams: streams.sort((a, b) => a.config.name.localeCompare(b.config.name))
@@ -188,6 +192,8 @@ async function watchStreams() {
 }
 
 async function listenForFailures(startTime) {
+  await awaitOnStream(tracingStreamName)
+
   const natsConnection = await getNatsConnection(),
     jetStreamClient = natsConnection.jetstream()
 
@@ -212,6 +218,22 @@ async function listenForFailures(startTime) {
       postMessage({ type: 'messageFailure', message: entry })
     }
   })
+}
+
+async function awaitOnStream(streamName) {
+  const natsConnection = await getNatsConnection(),
+    jetStreamManager = await natsConnection.jetstreamManager()
+
+  while (true) {
+    const streams = await jetStreamManager.streams.list().next(),
+      stream = streams.find(x => x.config.name === streamName)
+
+    if (stream) {
+      return stream
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
 }
 
 async function getNatsConnection() {

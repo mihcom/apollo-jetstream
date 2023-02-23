@@ -100,10 +100,6 @@ function getTraceDuration(traceEntry, previousTraceEntry) {
   const messageTimestamp = traceEntry.info.timestampNanos,
     previousMessageTimestamp = previousTraceEntry.info.timestampNanos
 
-  if (traceEntry.headers.get('Tracing.Headers.Event.Service')[0] === 'RunLog') {
-    console.log(traceEntry, previousTraceEntry, millis(messageTimestamp - previousMessageTimestamp))
-  }
-
   return millis(messageTimestamp - previousMessageTimestamp)
 }
 
@@ -134,10 +130,10 @@ function formatDuration(duration) {
   <div class="message-tracing">
     <div class="header">Message tracing</div>
     <div class="service-traces" v-if="services?.size">
-      <div class="service-trace" v-for="[service, serviceHandlers] in services">
-        <div class="service-name title">{{ service }}</div>
+      <div class="service-trace" v-for="service in Array.from(services.keys()).sort()">
+        <div class="service-name title">{{ service }} {{ services[service] }}</div>
         <div class="service-handlers">
-          <div class="service-handler" v-for="[serviceHandler, traceEntries] in serviceHandlers">
+          <div class="service-handler" v-for="serviceHandler in Array.from(services.get(service).keys()).sort()">
             <div class="service-handler-name title" :title="serviceHandler">
               {{ serviceHandler.split('.').slice(-1)[0] }}
             </div>
@@ -155,15 +151,15 @@ function formatDuration(duration) {
                 >
               </v-timeline-item>
               <v-timeline-item
-                v-for="(traceEntry, index) in traceEntries"
+                v-for="(traceEntry, index) in services.get(service).get(serviceHandler)"
                 :key="traceEntry.seq"
                 :icon="getTraceIcon(traceEntry)"
                 :dot-color="getTraceColor(traceEntry)"
                 line-inset="3"
               >
                 <template v-slot:opposite>
-                  <div class="duration" :class="{ slow: getTraceDuration(traceEntry, traceEntries[index - 1]) > 20 }">
-                    +{{ formatDuration(getTraceDuration(traceEntry, traceEntries[index - 1])) }}
+                  <div class="duration" :class="{ slow: getTraceDuration(traceEntry, services.get(service).get(serviceHandler)[index - 1]) > 20 }">
+                    +{{ formatDuration(getTraceDuration(traceEntry, services.get(service).get(serviceHandler)[index - 1])) }}
                   </div>
                   {{ moment(millis(traceEntry.info.timestampNanos)).format('HH:mm:ss.SSS') }}
                 </template>

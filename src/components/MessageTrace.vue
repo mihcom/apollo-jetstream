@@ -104,9 +104,9 @@ function getTraceDuration(traceEntry, previousTraceEntry) {
 }
 
 function formatDuration(duration) {
-  //if (duration < 1000) {
-  return `${duration}ms`
-  //}
+  if (duration < 1000) {
+    return `${duration}ms`
+  }
 
   const momentDuration = moment.duration(duration, 'milliseconds')
 

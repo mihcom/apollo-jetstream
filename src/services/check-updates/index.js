@@ -1,5 +1,5 @@
 ﻿import ReleaseInfo from './ReleaseInfo.vue'
-import { Octokit } from 'https://cdn.skypack.dev/@octokit/rest'
+import { Octokit } from 'https://esm.sh/@octokit/core'
 import { useToast } from 'vue-toastification'
 import { gt } from 'semver'
 

@@ -46,11 +46,9 @@ function apply(e) {
         </v-form>
       </v-card-text>
       <v-card-actions class="justify-end">
-        <v-btn text @click="apply" :disabled="!valid">Apply</v-btn>
-        <v-btn text @click="$emit('close')">Close</v-btn>
+        <v-btn variant="text" @click="apply" :disabled="!valid">Apply</v-btn>
+        <v-btn variant="text" @click="$emit('close')">Close</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
-
-<style scoped lang="stylus"></style>

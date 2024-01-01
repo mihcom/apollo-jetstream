@@ -1,7 +1,9 @@
 import { AckPolicy, connect, DeliverPolicy, ReplayPolicy, createInbox } from 'nats.ws'
 import moment from 'moment/moment.js'
 
-const tracingStreamName = 'Tracing'
+const tracingStreamName = 'Tracing',
+  debugConsumerDescription = 'apollo-jetstream debug consumer'
+
 let natsServerAddress, connectionPromise
 
 onmessage = event => {
@@ -52,6 +54,11 @@ onmessage = event => {
       listenForFailures(event.data.startTime)
       break
 
+    case 'getConsumers':
+      // noinspection JSIgnoredPromiseFromCall
+      getConsumers(event.data.streamName)
+      break
+
     default:
       throw `Unknown message type: ${type}`
   }
@@ -84,6 +91,19 @@ async function getStreams(startTime) {
   for (const stream of streams) {
     await createStreamConsumer(stream, startTime)
   }
+}
+
+async function getConsumers(streamName) {
+  await connectionPromise
+
+  const natsConnection = await getNatsConnection(),
+    jetStreamManager = await natsConnection.jetstreamManager(),
+    consumers = (await jetStreamManager.consumers.list(streamName).next()).filter(x => x.config.description !== debugConsumerDescription)
+
+  postMessage({
+    type: 'consumers',
+    consumers: consumers.sort((a, b) => a.name.localeCompare(b.name))
+  })
 }
 
 async function createStreamConsumer(stream, startTime) {
@@ -139,7 +159,7 @@ async function createConsumer(options) {
     consumerConfiguration = {
       ack_policy: AckPolicy.None, // we don't need to ack messages
       deliver_subject: createInbox(), // specify subject to make this consumer a push consumer
-      description: 'apollo-jetstream debug consumer',
+      description: debugConsumerDescription,
       replay_policy: ReplayPolicy.Instant, // get messages as soon as possible
       ...consumerConfigurationOverride
     },

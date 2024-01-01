@@ -28,15 +28,8 @@ function getMaxAckPendingColor(value) {
 <template>
   <v-data-table :headers="headers" :items="consumers" items-per-page="20">
     <template v-slot:item.config.max_ack_pending="{ value }">
-      <v-chip :color="getMaxAckPendingColor(value)">{{
-        value.toLocaleString('da-DK', {
-          style: 'unit',
-          unitDisplay: 'long'
-        })
-      }}</v-chip>
+      <v-chip :color="getMaxAckPendingColor(value)">{{ value.toLocaleString('da-DK') }}</v-chip>
     </template>
     <template v-slot:item.config.ack_wait="{ value }"> {{ moment.duration(millis(value)).asSeconds() }} seconds </template>
   </v-data-table>
 </template>
-
-<style scoped lang="stylus"></style>

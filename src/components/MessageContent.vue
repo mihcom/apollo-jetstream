@@ -3,7 +3,7 @@ import { useJetStreamStore } from '../stores/JetStream'
 import { ref, onMounted, watch, unref } from 'vue'
 import 'vanilla-jsoneditor/themes/jse-theme-dark.css'
 import JsonEditorVue from 'json-editor-vue'
-import jwt_decode from 'jwt-decode'
+import { jwtDecode } from 'jwt-decode'
 import moment from 'moment'
 import { millis } from 'nats.ws'
 
@@ -59,7 +59,7 @@ function outputData() {
       }
 
       if (viewModel.content.jwt) {
-        viewModel.content.jwt = jwt_decode(viewModel.content.jwt)
+        viewModel.content.jwt = jwtDecode(viewModel.content.jwt)
       }
     }
   }

@@ -22,6 +22,7 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     }),
     startTime = computed(() => moment().subtract(duration.value).valueOf()),
     streams = ref([]),
+    consumers = ref([]),
     messages = ref([]),
     mappedMessages = new Map(),
     selectedMessage = ref(undefined),
@@ -50,7 +51,11 @@ export const useJetStreamStore = defineStore('JetStream', () => {
         streams.value = data.streams
         break
 
-      case 'message':
+      case 'consumers':
+        consumers.value = data.consumers
+        break
+
+      case 'message': {
         messages.value.push(data.message)
         cancelLoading()
         clearTimeout(cancelLoadingOnTimeout)
@@ -71,6 +76,7 @@ export const useJetStreamStore = defineStore('JetStream', () => {
         mapped.set(messageIdHeader[0], data.message)
 
         break
+      }
 
       case 'messageTrace':
         messagesTraceCache.get(data.message.messageId).value.push(data.message)
@@ -128,6 +134,25 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     })
   }
 
+  async function getConsumers(stream) {
+    loading.value = true
+    consumers.value = []
+
+    const consumersPromise = new Promise(resolve => {
+      const unwatch = watch(consumers, () => {
+        unwatch()
+        resolve(consumers.value)
+      })
+
+      worker.postMessage({
+        type: 'getConsumers',
+        streamName: stream.config.name
+      })
+    })
+
+    return await consumersPromise
+  }
+
   function listenForFailures() {
     worker.postMessage({
       type: 'listenForFailures',
@@ -166,6 +191,7 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     startTime,
     duration,
     streams,
+    consumers,
     loading,
     messages,
     selectedMessage,
@@ -173,6 +199,7 @@ export const useJetStreamStore = defineStore('JetStream', () => {
     failures,
     fetchMessageTrace,
     selectMessage,
-    natsServerAddress
+    natsServerAddress,
+    getConsumers
   }
 })

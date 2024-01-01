@@ -8,6 +8,7 @@ import pluralize from 'pluralize'
 import hotkeys from 'hotkeys-js'
 import { throttle } from 'throttle-debounce'
 import groupToMap from 'core-js/actual/array/group-to-map'
+import StreamInfo from './StreamInfo'
 
 const store = useJetStreamStore(),
   svgContainer = ref(null),
@@ -547,87 +548,7 @@ function selectMessage(direction) {
     <div ref="svgContainer" class="svg-container" />
     <v-progress-linear color="grey-darken-3" indeterminate location="bottom" absolute :active="store.loading" />
     <v-dialog v-model="openDialog" max-width="40em">
-      <v-card>
-        <v-toolbar color="primary" dense>
-          <v-toolbar-title><v-icon>mdi-tray-full</v-icon> {{ selectedStream?.config.name }} </v-toolbar-title>
-        </v-toolbar>
-        <v-card-text>
-          <v-row v-if="selectedStream?.config.description">
-            <v-col>Description</v-col>
-            <v-col>{{ selectedStream?.config.description }}</v-col>
-          </v-row>
-          <v-row>
-            <v-col><v-icon>mdi-filter</v-icon> Subjects</v-col>
-            <v-col>{{ selectedStream?.config.subjects.join(', ') }}</v-col>
-          </v-row>
-          <v-row>
-            <v-col><v-icon>mdi-database</v-icon>Retention policy</v-col>
-            <v-col
-              >{{ selectedStream?.config.retention }}
-              <ul class="limits">
-                <li v-if="selectedStream?.config.max_age > 0">{{ moment.duration(millis(selectedStream?.config.max_age)).humanize() }} lifetime</li>
-                <li v-if="selectedStream?.config.max_bytes > 0">
-                  {{ selectedStream?.config.max_bytes }} bytes ({{
-                    (selectedStream?.config.max_bytes / 1024 / 1024).toLocaleString('da-DK', {
-                      style: 'unit',
-                      unit: 'megabyte',
-                      unitDisplay: 'long'
-                    })
-                  }})
-                </li>
-                <li v-if="selectedStream?.config.max_msgs > 0">{{ selectedStream?.config.max_msgs.toLocaleString('da-DK') }} messages</li>
-              </ul>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col><v-icon>mdi-email-multiple</v-icon> Messages</v-col>
-            <v-col>{{ selectedStream?.state.messages.toLocaleString('da-DK') }}</v-col>
-          </v-row>
-          <v-row>
-            <v-col><v-icon>mdi-content-save</v-icon> Size</v-col>
-            <v-col>
-              {{
-                (selectedStream?.state.bytes / 1024 / 1024).toLocaleString('da-DK', {
-                  style: 'unit',
-                  unit: 'megabyte',
-                  unitDisplay: 'long'
-                })
-              }}</v-col
-            >
-          </v-row>
-          <v-row>
-            <v-col><v-icon>mdi-human-queue</v-icon> Consumers</v-col>
-            <v-col>{{ (selectedStream?.state.consumer_count - 1).toLocaleString('da-DK') }}</v-col>
-          </v-row>
-          <v-row>
-            <v-col><v-icon>mdi-calendar-clock</v-icon> First message</v-col>
-            <v-col>
-              <div v-if="selectedStream?.state.first_ts != '0001-01-01T00:00:00Z'">
-                {{ moment(selectedStream?.state.first_ts).format('DD MMM YYYY  HH:mm:ss.SSS') }} ({{
-                  moment.duration(moment().diff(moment(selectedStream?.state.first_ts))).humanize()
-                }}
-                ago)
-              </div>
-              <div v-else>never</div>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col><v-icon>mdi-calendar-clock</v-icon> Last message</v-col>
-            <v-col>
-              <div v-if="selectedStream?.state.last_ts != '0001-01-01T00:00:00Z'">
-                {{ moment(selectedStream?.state.last_ts).format('DD MMM YYYY  HH:mm:ss.SSS') }} ({{
-                  moment.duration(moment().diff(moment(selectedStream?.state.last_ts))).humanize()
-                }}
-                ago)
-              </div>
-              <div v-else>never</div>
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-card-actions class="justify-end">
-          <v-btn text @click="openDialog = undefined">Close</v-btn>
-        </v-card-actions>
-      </v-card>
+      <stream-info :stream="selectedStream" @close="openDialog = false" />
     </v-dialog>
   </div>
 </template>
@@ -644,9 +565,6 @@ function selectMessage(direction) {
 
   .v-col:first-child
     flex 0 0 12em
-
-  ul.limits
-    margin-left 1em
 </style>
 
 <style lang="stylus">

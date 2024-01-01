@@ -42,7 +42,7 @@ const props = defineProps({
         </ul>
       </v-card-text>
       <v-card-actions class="justify-end">
-        <v-btn text @click="$emit('close')">Close</v-btn>
+        <v-btn variant="text" @click="$emit('close')">Close</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

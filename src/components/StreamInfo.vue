@@ -16,6 +16,8 @@ const store = useJetStreamStore(),
   consumers = ref([]),
   openDialog = ref(false)
 
+defineEmits(['close'])
+
 async function showConsumers(stream) {
   consumers.value = await store.getConsumers(stream)
   openDialog.value = true
@@ -124,7 +126,7 @@ function capitalize(string) {
     </v-card-actions>
   </v-card>
   <v-dialog v-model="openDialog" max-width="90vw">
-    <consumers-info :consumers="consumers" @close="openDialog = false" />
+    <consumers-info :consumers="consumers" />
   </v-dialog>
 </template>
 
